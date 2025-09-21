@@ -8,9 +8,22 @@ import { fileURLToPath } from 'node:url';
 import { nanoid } from 'nanoid';
 import { generateRecipeSteps } from './providers/doubao.js';
 import { buildStepsPrompt } from './providers/shared.js';
+import { 
+  authMiddleware, 
+  getUserInfo, 
+  updateUserPoints, 
+  consumePoints, 
+  rewardPoints,
+  checkUserPoints 
+} from './auth.js';
 
 const app = Fastify({ logger: true });
-await app.register(cors, { origin: true });
+await app.register(cors, { 
+  origin: true,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+});
 await app.register(multipart, {
   limits: {
     fileSize: 10 * 1024 * 1024, // 10MB
@@ -218,6 +231,125 @@ app.post('/feedback', async (req, reply) => {
   if (!body?.jobId || !body?.rating) return reply.code(400).send({ error: 'jobId and rating are required' });
   feedbacks.push({ ...body, createdAt: now() });
   return reply.code(204).send();
+});
+
+// 认证相关API端点
+
+// 获取用户信息
+app.get('/auth/user', { preHandler: authMiddleware }, async (req, reply) => {
+  try {
+    const userInfo = await getUserInfo(req.user.id);
+    if (userInfo.error) {
+      return reply.code(500).send({ error: '获取用户信息失败' });
+    }
+    
+    return reply.send({
+      id: req.user.id,
+      username: userInfo.username,
+      points: userInfo.points
+    });
+  } catch (error) {
+    app.log.error({ err: error }, '获取用户信息失败');
+    return reply.code(500).send({ error: '服务器错误' });
+  }
+});
+
+// 更新用户积分
+app.post('/auth/points', { preHandler: authMiddleware }, async (req, reply) => {
+  try {
+    const { points } = await req.body;
+    if (typeof points !== 'number') {
+      return reply.code(400).send({ error: '积分必须是数字' });
+    }
+
+    const result = await updateUserPoints(req.user.id, points);
+    if (!result.success) {
+      return reply.code(500).send({ error: '更新积分失败' });
+    }
+
+    return reply.send({
+      success: true,
+      newPoints: result.newPoints
+    });
+  } catch (error) {
+    app.log.error({ err: error }, '更新积分失败');
+    return reply.code(500).send({ error: '服务器错误' });
+  }
+});
+
+// 消费积分
+app.post('/auth/consume-points', { preHandler: authMiddleware }, async (req, reply) => {
+  try {
+    const { points } = await req.body;
+    if (typeof points !== 'number' || points <= 0) {
+      return reply.code(400).send({ error: '积分必须是正数' });
+    }
+
+    const result = await consumePoints(req.user.id, points);
+    if (!result.success) {
+      return reply.code(400).send({ 
+        error: result.error,
+        currentPoints: result.currentPoints 
+      });
+    }
+
+    return reply.send({
+      success: true,
+      newPoints: result.newPoints,
+      consumedPoints: result.consumedPoints
+    });
+  } catch (error) {
+    app.log.error({ err: error }, '消费积分失败');
+    return reply.code(500).send({ error: '服务器错误' });
+  }
+});
+
+// 奖励积分
+app.post('/auth/reward-points', { preHandler: authMiddleware }, async (req, reply) => {
+  try {
+    const { points } = await req.body;
+    if (typeof points !== 'number' || points <= 0) {
+      return reply.code(400).send({ error: '积分必须是正数' });
+    }
+
+    const result = await rewardPoints(req.user.id, points);
+    if (!result.success) {
+      return reply.code(500).send({ error: '奖励积分失败' });
+    }
+
+    return reply.send({
+      success: true,
+      newPoints: result.newPoints,
+      rewardedPoints: result.rewardedPoints
+    });
+  } catch (error) {
+    app.log.error({ err: error }, '奖励积分失败');
+    return reply.code(500).send({ error: '服务器错误' });
+  }
+});
+
+// 检查积分是否足够
+app.post('/auth/check-points', { preHandler: authMiddleware }, async (req, reply) => {
+  try {
+    const { requiredPoints } = await req.body;
+    if (typeof requiredPoints !== 'number' || requiredPoints < 0) {
+      return reply.code(400).send({ error: '所需积分必须是非负数' });
+    }
+
+    const result = await checkUserPoints(req.user.id, requiredPoints);
+    if (result.error) {
+      return reply.code(500).send({ error: '检查积分失败' });
+    }
+
+    return reply.send({
+      hasEnough: result.hasEnough,
+      currentPoints: result.currentPoints,
+      requiredPoints
+    });
+  } catch (error) {
+    app.log.error({ err: error }, '检查积分失败');
+    return reply.code(500).send({ error: '服务器错误' });
+  }
 });
 
 const port = process.env.PORT || 8787;

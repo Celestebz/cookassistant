@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>简单认证测试</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .test-button:hover {
+            background: #5a6fd8;
+        }
+        .result {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-family: monospace;
+        }
+        .success { color: #27ae60; }
+        .error { color: #e74c3c; }
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 简单认证测试</h1>
+    
+    <div class="test-section">
+        <h2>1. 初始化测试</h2>
+        <button class="test-button" onclick="testInit()">测试Supabase初始化</button>
+        <div id="init-result" class="result" style="display: none;"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>2. 注册测试</h2>
+        <input type="text" id="username" placeholder="用户名" value="testuser">
+        <input type="password" id="password" placeholder="密码" value="123456">
+        <button class="test-button" onclick="testRegister()">测试注册</button>
+        <div id="register-result" class="result" style="display: none;"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>3. 登录测试</h2>
+        <button class="test-button" onclick="testLogin()">测试登录</button>
+        <div id="login-result" class="result" style="display: none;"></div>
+    </div>
+
+    <script>
+        // Supabase配置
+        const SUPABASE_URL = 'https://bqbtkaljxsmdcpedrerg.supabase.co'
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxYnRrYWxqeHNtZGNwZWRyZXJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NDg0NDUsImV4cCI6MjA3NDAyNDQ0NX0._XIcJcSg_00b_iOs90QM5GNaKAg5_LEHGDrexDTFcMQ'
+        
+        let supabaseClient = null
+        let currentUser = null
+
+        // 初始化Supabase
+        function initSupabase() {
+            try {
+                if (typeof supabase !== 'undefined' && supabase.createClient) {
+                    const { createClient } = supabase
+                    supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY)
+                    return true
+                }
+                return false
+            } catch (error) {
+                console.error('初始化失败:', error)
+                return false
+            }
+        }
+
+        // 测试初始化
+        function testInit() {
+            const resultDiv = document.getElementById('init-result')
+            resultDiv.style.display = 'block'
+            
+            if (initSupabase()) {
+                resultDiv.innerHTML = '<span class="success">✅ Supabase初始化成功</span>'
+            } else {
+                resultDiv.innerHTML = '<span class="error">❌ Supabase初始化失败</span>'
+            }
+        }
+
+        // 测试注册
+        async function testRegister() {
+            const resultDiv = document.getElementById('register-result')
+            resultDiv.style.display = 'block'
+            resultDiv.innerHTML = '正在注册...'
+            
+            if (!supabaseClient) {
+                resultDiv.innerHTML = '<span class="error">❌ 请先初始化Supabase</span>'
+                return
+            }
+
+            const username = document.getElementById('username').value
+            const password = document.getElementById('password').value
+
+            try {
+                const { data, error } = await supabaseClient.auth.signUp({
+                    email: `${username}@temp.com`,
+                    password: password,
+                    options: {
+                        data: { username: username }
+                    }
+                })
+
+                if (error) {
+                    resultDiv.innerHTML = `<span class="error">❌ 注册失败: ${error.message}</span>`
+                } else {
+                    resultDiv.innerHTML = '<span class="success">✅ 注册成功！</span>'
+                    currentUser = data.user
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">❌ 注册失败: ${error.message}</span>`
+            }
+        }
+
+        // 测试登录
+        async function testLogin() {
+            const resultDiv = document.getElementById('login-result')
+            resultDiv.style.display = 'block'
+            resultDiv.innerHTML = '正在登录...'
+            
+            if (!supabaseClient) {
+                resultDiv.innerHTML = '<span class="error">❌ 请先初始化Supabase</span>'
+                return
+            }
+
+            const username = document.getElementById('username').value
+            const password = document.getElementById('password').value
+
+            try {
+                const { data, error } = await supabaseClient.auth.signInWithPassword({
+                    email: `${username}@temp.com`,
+                    password: password
+                })
+
+                if (error) {
+                    resultDiv.innerHTML = `<span class="error">❌ 登录失败: ${error.message}</span>`
+                } else {
+                    resultDiv.innerHTML = '<span class="success">✅ 登录成功！</span>'
+                    currentUser = data.user
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">❌ 登录失败: ${error.message}</span>`
+            }
+        }
+
+        // 页面加载时自动初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                testInit()
+            }, 1000)
+        })
+    </script>
+</body>
+</html>

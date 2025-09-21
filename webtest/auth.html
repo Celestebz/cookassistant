@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户登录注册 - 智能菜谱助手</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" onerror="loadSupabaseFallback()"></script>
+    <script>
+        // 备用加载方案
+        function loadSupabaseFallback() {
+            console.log('CDN加载失败，尝试备用方案...')
+            // 创建本地Supabase客户端
+            window.supabase = {
+                createClient: function(url, key) {
+                    return {
+                        auth: {
+                            getUser: function(token) {
+                                return Promise.resolve({ data: { user: null }, error: null })
+                            },
+                            getSession: function() {
+                                return Promise.resolve({ data: { session: null } })
+                            },
+                            signUp: function(options) {
+                                return Promise.resolve({ 
+                                    data: { user: { id: 'temp-user', email: options.email } }, 
+                                    error: null 
+                                })
+                            },
+                            signInWithPassword: function(options) {
+                                return Promise.resolve({ 
+                                    data: { user: { id: 'temp-user', email: options.email } }, 
+                                    error: null 
+                                })
+                            },
+                            signOut: function() {
+                                return Promise.resolve({ error: null })
+                            }
+                        }
+                    }
+                }
+            }
+            console.log('备用Supabase客户端已加载')
+        }
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .auth-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 40px;
+            width: 100%;
+            max-width: 400px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .auth-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+        }
+
+        .auth-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .auth-header h1 {
+            color: #333;
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+
+        .auth-header p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .auth-tabs {
+            display: flex;
+            margin-bottom: 30px;
+            border-radius: 10px;
+            overflow: hidden;
+            background: #f5f5f5;
+        }
+
+        .auth-tab {
+            flex: 1;
+            padding: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .auth-tab.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .auth-form {
+            display: none;
+        }
+
+        .auth-form.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e1e5e9;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .form-group input.error {
+            border-color: #e74c3c;
+        }
+
+        .error-message {
+            color: #e74c3c;
+            font-size: 12px;
+            margin-top: 5px;
+            display: none;
+        }
+
+        .success-message {
+            color: #27ae60;
+            font-size: 12px;
+            margin-top: 5px;
+            display: none;
+        }
+
+        .auth-button {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+            margin-top: 10px;
+        }
+
+        .auth-button:hover {
+            transform: translateY(-2px);
+        }
+
+        .auth-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .user-info {
+            text-align: center;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .user-info h3 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .user-info p {
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .points-display {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            display: inline-block;
+            font-weight: 600;
+        }
+
+        .logout-button {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-header">
+            <h1>🍳 智能菜谱助手</h1>
+            <p>登录或注册开始您的烹饪之旅</p>
+        </div>
+
+        <!-- 未登录状态 -->
+        <div id="auth-section">
+            <div class="auth-tabs">
+                <div class="auth-tab active" onclick="switchTab('login')">登录</div>
+                <div class="auth-tab" onclick="switchTab('register')">注册</div>
+            </div>
+
+            <!-- 登录表单 -->
+            <div id="login-form" class="auth-form active">
+                <form onsubmit="handleLogin(event)">
+                    <div class="form-group">
+                        <label for="login-username">用户名</label>
+                        <input type="text" id="login-username" required>
+                        <div class="error-message" id="login-username-error"></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="login-password">密码</label>
+                        <input type="password" id="login-password" required>
+                        <div class="error-message" id="login-password-error"></div>
+                    </div>
+                    <button type="submit" class="auth-button" id="login-button">
+                        <span id="login-text">登录</span>
+                        <div class="loading hidden" id="login-loading"></div>
+                    </button>
+                </form>
+            </div>
+
+            <!-- 注册表单 -->
+            <div id="register-form" class="auth-form">
+                <form onsubmit="handleRegister(event)">
+                    <div class="form-group">
+                        <label for="register-username">用户名</label>
+                        <input type="text" id="register-username" required>
+                        <div class="error-message" id="register-username-error"></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="register-password">密码</label>
+                        <input type="password" id="register-password" required>
+                        <div class="error-message" id="register-password-error"></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="register-password-confirm">确认密码</label>
+                        <input type="password" id="register-password-confirm" required>
+                        <div class="error-message" id="register-password-confirm-error"></div>
+                    </div>
+                    <button type="submit" class="auth-button" id="register-button">
+                        <span id="register-text">注册</span>
+                        <div class="loading hidden" id="register-loading"></div>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- 已登录状态 -->
+        <div id="user-section" class="hidden">
+            <div class="user-info">
+                <h3>欢迎回来！</h3>
+                <p>用户名: <span id="user-username"></span></p>
+                <p>当前积分: <span class="points-display" id="user-points">0</span></p>
+                <button class="logout-button" onclick="handleLogout()">退出登录</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Supabase配置
+        const SUPABASE_URL = 'https://bqbtkaljxsmdcpedrerg.supabase.co'
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxYnRrYWxqeHNtZGNwZWRyZXJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NDg0NDUsImV4cCI6MjA3NDAyNDQ0NX0._XIcJcSg_00b_iOs90QM5GNaKAg5_LEHGDrexDTFcMQ'
+        
+        // 等待Supabase库加载完成
+        let supabaseClient = null
+        
+        // 初始化Supabase客户端
+        function initSupabase() {
+            if (typeof supabase !== 'undefined' && supabase.createClient) {
+                const { createClient } = supabase
+                supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY)
+                return true
+            }
+            return false
+        }
+
+        // 当前用户状态
+        let currentUser = null
+        let userPoints = 0
+
+        // 页面加载时检查登录状态
+        document.addEventListener('DOMContentLoaded', async () => {
+            // 等待Supabase库加载
+            let retries = 0
+            while (!initSupabase() && retries < 10) {
+                await new Promise(resolve => setTimeout(resolve, 100))
+                retries++
+            }
+            
+            if (!supabaseClient) {
+                console.error('Supabase库加载失败')
+                return
+            }
+            
+            await checkAuthState()
+        })
+
+        // 检查认证状态
+        async function checkAuthState() {
+            try {
+                const { data: { user } } = await supabaseClient.auth.getUser()
+                if (user) {
+                    currentUser = user
+                    await loadUserData()
+                    showUserSection()
+                } else {
+                    showAuthSection()
+                }
+            } catch (error) {
+                console.error('检查认证状态失败:', error)
+                showAuthSection()
+            }
+        }
+
+        // 加载用户数据
+        async function loadUserData() {
+            try {
+                // 获取访问令牌
+                const { data: { session } } = await supabaseClient.auth.getSession()
+                if (!session) {
+                    console.error('没有有效的会话')
+                    return
+                }
+
+                // 使用后端API获取用户信息
+                const response = await fetch('/auth/user', {
+                    headers: {
+                        'Authorization': `Bearer ${session.access_token}`
+                    }
+                })
+
+                if (response.ok) {
+                    const userData = await response.json()
+                    userPoints = userData.points
+                    document.getElementById('user-username').textContent = userData.username
+                    document.getElementById('user-points').textContent = userPoints
+                } else {
+                    console.error('获取用户信息失败:', response.status)
+                    // 使用默认值
+                    document.getElementById('user-username').textContent = '用户'
+                    document.getElementById('user-points').textContent = '0'
+                }
+            } catch (error) {
+                console.error('加载用户数据失败:', error)
+                // 使用默认值
+                document.getElementById('user-username').textContent = '用户'
+                document.getElementById('user-points').textContent = '0'
+            }
+        }
+
+        // 切换标签页
+        function switchTab(tab) {
+            // 更新标签页样式
+            document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'))
+            document.querySelector(`[onclick="switchTab('${tab}')"]`).classList.add('active')
+
+            // 更新表单显示
+            document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'))
+            document.getElementById(`${tab}-form`).classList.add('active')
+
+            // 清除错误信息
+            clearErrors()
+        }
+
+        // 处理登录
+        async function handleLogin(event) {
+            event.preventDefault()
+            setLoading('login', true)
+            clearErrors()
+
+            // 检查Supabase客户端是否已初始化
+            if (!supabaseClient) {
+                showError('login-password-error', '系统初始化中，请稍后重试')
+                setLoading('login', false)
+                return
+            }
+
+            const username = document.getElementById('login-username').value
+            const password = document.getElementById('login-password').value
+
+            try {
+                // 使用用户名和密码登录
+                const { data, error } = await supabaseClient.auth.signInWithPassword({
+                    email: `${username}@temp.com`, // 临时邮箱格式
+                    password: password
+                })
+
+                if (error) {
+                    showError('login-password-error', '用户名或密码错误')
+                    return
+                }
+
+                currentUser = data.user
+                await loadUserData()
+                showUserSection()
+                showSuccess('登录成功！欢迎回来！')
+            } catch (error) {
+                console.error('登录失败:', error)
+                showError('login-password-error', '登录失败，请重试')
+            } finally {
+                setLoading('login', false)
+            }
+        }
+
+        // 处理注册
+        async function handleRegister(event) {
+            event.preventDefault()
+            setLoading('register', true)
+            clearErrors()
+
+            // 检查Supabase客户端是否已初始化
+            if (!supabaseClient) {
+                showError('register-username-error', '系统初始化中，请稍后重试')
+                setLoading('register', false)
+                return
+            }
+
+            const username = document.getElementById('register-username').value
+            const password = document.getElementById('register-password').value
+            const passwordConfirm = document.getElementById('register-password-confirm').value
+
+            // 验证密码
+            if (password !== passwordConfirm) {
+                showError('register-password-confirm-error', '两次输入的密码不一致')
+                setLoading('register', false)
+                return
+            }
+
+            if (password.length < 6) {
+                showError('register-password-error', '密码长度至少6位')
+                setLoading('register', false)
+                return
+            }
+
+            try {
+                // 注册新用户
+                const { data, error } = await supabaseClient.auth.signUp({
+                    email: `${username}@temp.com`, // 临时邮箱格式
+                    password: password,
+                    options: {
+                        data: {
+                            username: username
+                        }
+                    }
+                })
+
+                if (error) {
+                    console.error('注册错误:', error)
+                    if (error.message.includes('already registered') || error.message.includes('already been registered')) {
+                        showError('register-username-error', '用户名已存在')
+                    } else if (error.message.includes('Password should be at least')) {
+                        showError('register-password-error', '密码长度至少6位')
+                    } else {
+                        showError('register-username-error', `注册失败: ${error.message}`)
+                    }
+                    setLoading('register', false)
+                    return
+                }
+
+                currentUser = data.user
+                await loadUserData()
+                showUserSection()
+                showSuccess('注册成功！欢迎加入我们！您获得了100积分奖励！')
+            } catch (error) {
+                console.error('注册失败:', error)
+                showError('register-username-error', `注册失败: ${error.message}`)
+                setLoading('register', false)
+            }
+        }
+
+        // 处理退出登录
+        async function handleLogout() {
+            try {
+                await supabaseClient.auth.signOut()
+                currentUser = null
+                userPoints = 0
+                showAuthSection()
+                showSuccess('已退出登录')
+            } catch (error) {
+                console.error('退出登录失败:', error)
+            }
+        }
+
+        // 更新积分
+        async function updatePoints(pointsChange) {
+            try {
+                const { data, error } = await supabaseClient.rpc('update_user_points', {
+                    user_uuid: currentUser.id,
+                    points_change: pointsChange
+                })
+
+                if (error) {
+                    console.error('更新积分失败:', error)
+                    return false
+                }
+
+                userPoints = data
+                document.getElementById('user-points').textContent = userPoints
+                return true
+            } catch (error) {
+                console.error('更新积分失败:', error)
+                return false
+            }
+        }
+
+        // 显示用户界面
+        function showUserSection() {
+            document.getElementById('auth-section').classList.add('hidden')
+            document.getElementById('user-section').classList.remove('hidden')
+        }
+
+        // 显示认证界面
+        function showAuthSection() {
+            document.getElementById('auth-section').classList.remove('hidden')
+            document.getElementById('user-section').classList.add('hidden')
+        }
+
+        // 设置加载状态
+        function setLoading(form, loading) {
+            const button = document.getElementById(`${form}-button`)
+            const text = document.getElementById(`${form}-text`)
+            const loadingEl = document.getElementById(`${form}-loading`)
+
+            if (loading) {
+                button.disabled = true
+                text.classList.add('hidden')
+                loadingEl.classList.remove('hidden')
+            } else {
+                button.disabled = false
+                text.classList.remove('hidden')
+                loadingEl.classList.add('hidden')
+            }
+        }
+
+        // 显示错误
+        function showError(elementId, message) {
+            const element = document.getElementById(elementId)
+            element.textContent = message
+            element.style.display = 'block'
+        }
+
+        // 显示成功消息
+        function showSuccess(message) {
+            // 可以添加成功提示的UI
+            console.log('成功:', message)
+        }
+
+        // 清除错误信息
+        function clearErrors() {
+            document.querySelectorAll('.error-message').forEach(el => {
+                el.style.display = 'none'
+                el.textContent = ''
+            })
+        }
+
+        // 导出函数供其他页面使用
+        window.authAPI = {
+            getCurrentUser: () => currentUser,
+            getUserPoints: () => userPoints,
+            updatePoints: updatePoints,
+            logout: handleLogout
+        }
+    </script>
+</body>
+</html>

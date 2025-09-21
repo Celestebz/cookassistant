@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>连接测试</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 10px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .success { color: #27ae60; }
+        .error { color: #e74c3c; }
+        .info { color: #3498db; }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #5a6fd8; }
+        #results {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 连接测试工具</h1>
+    
+    <div class="test-section">
+        <h3>后端服务测试</h3>
+        <button onclick="testBackendConnection()">测试后端连接</button>
+        <button onclick="testAuthAPI()">测试认证API</button>
+        <button onclick="testSupabaseConnection()">测试Supabase连接</button>
+    </div>
+    
+    <div class="test-section">
+        <h3>注册功能测试</h3>
+        <button onclick="testRegistration()">测试注册功能</button>
+    </div>
+    
+    <div id="results"></div>
+
+    <script>
+        const SUPABASE_URL = 'https://bqbtkaljxsmdcpedrerg.supabase.co'
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxYnRrYWxqeHNtZGNwZWRyZXJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NDg0NDUsImV4cCI6MjA3NDAyNDQ0NX0._XIcJcSg_00b_iOs90QM5GNaKAg5_LEHGDrexDTFcMQ'
+        
+        let supabaseClient = null
+        
+        // 等待Supabase库加载
+        function waitForSupabase() {
+            return new Promise((resolve) => {
+                if (typeof supabase !== 'undefined') {
+                    resolve()
+                } else {
+                    setTimeout(() => waitForSupabase().then(resolve), 100)
+                }
+            })
+        }
+        
+        async function initSupabase() {
+            try {
+                await waitForSupabase()
+                const { createClient } = supabase
+                supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY)
+                log('✅ Supabase客户端初始化成功', 'success')
+            } catch (error) {
+                log(`❌ Supabase初始化失败: ${error.message}`, 'error')
+            }
+        }
+
+        function log(message, type = 'info') {
+            const results = document.getElementById('results')
+            const timestamp = new Date().toLocaleTimeString()
+            const className = type === 'success' ? 'success' : type === 'error' ? 'error' : 'info'
+            results.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`
+        }
+
+        async function testBackendConnection() {
+            log('测试后端连接...', 'info')
+            try {
+                const response = await fetch('http://localhost:8787/auth/check-points', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ requiredPoints: 10 })
+                })
+                
+                if (response.ok) {
+                    log('✅ 后端连接成功！', 'success')
+                } else {
+                    const data = await response.json()
+                    if (data.error === '未提供认证令牌') {
+                        log('✅ 后端连接成功！(需要认证令牌)', 'success')
+                    } else {
+                        log(`❌ 后端响应错误: ${data.error}`, 'error')
+                    }
+                }
+            } catch (error) {
+                log(`❌ 后端连接失败: ${error.message}`, 'error')
+            }
+        }
+
+        async function testAuthAPI() {
+            log('测试认证API...', 'info')
+            try {
+                const response = await fetch('http://localhost:8787/auth/user', {
+                    headers: { 'Authorization': 'Bearer test-token' }
+                })
+                
+                const data = await response.json()
+                if (data.error === '无效的认证令牌') {
+                    log('✅ 认证API正常工作！', 'success')
+                } else {
+                    log(`❌ 认证API异常: ${data.error}`, 'error')
+                }
+            } catch (error) {
+                log(`❌ 认证API测试失败: ${error.message}`, 'error')
+            }
+        }
+
+        async function testSupabaseConnection() {
+            log('测试Supabase连接...', 'info')
+            if (!supabaseClient) {
+                log('❌ Supabase客户端未初始化', 'error')
+                return
+            }
+            
+            try {
+                const { data, error } = await supabaseClient.auth.getUser()
+                if (error) {
+                    if (error.message.includes('Auth session missing')) {
+                        log('✅ Supabase连接正常（未登录状态）', 'success')
+                    } else {
+                        log(`❌ Supabase连接失败: ${error.message}`, 'error')
+                    }
+                } else {
+                    log('✅ Supabase连接成功！', 'success')
+                }
+            } catch (error) {
+                log(`❌ Supabase连接异常: ${error.message}`, 'error')
+            }
+        }
+
+        async function testRegistration() {
+            log('测试注册功能...', 'info')
+            if (!supabaseClient) {
+                log('❌ Supabase客户端未初始化', 'error')
+                return
+            }
+            
+            try {
+                const testUsername = 'testuser_' + Date.now()
+                const { data, error } = await supabaseClient.auth.signUp({
+                    email: `${testUsername}@temp.com`,
+                    password: '123456',
+                    options: {
+                        data: { username: testUsername }
+                    }
+                })
+
+                if (error) {
+                    log(`❌ 注册失败: ${error.message}`, 'error')
+                } else {
+                    log('✅ 注册成功！', 'success')
+                    log(`用户ID: ${data.user?.id}`, 'info')
+                }
+            } catch (error) {
+                log(`❌ 注册异常: ${error.message}`, 'error')
+            }
+        }
+
+        // 页面加载时自动测试
+        window.onload = async function() {
+            log('页面加载完成，开始自动测试...', 'info')
+            
+            // 初始化Supabase
+            await initSupabase()
+            
+            // 测试后端连接
+            setTimeout(testBackendConnection, 500)
+            
+            // 测试Supabase连接
+            setTimeout(testSupabaseConnection, 1000)
+        }
+    </script>
+</body>
+</html>

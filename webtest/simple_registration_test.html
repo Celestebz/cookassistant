@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>注册功能测试</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 500px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .form-container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #5a6fd8;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .message {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <h2>🧪 注册功能测试</h2>
+        <p>测试用户注册和数据库保存功能</p>
+        
+        <form id="registrationForm">
+            <div class="form-group">
+                <label for="username">用户名:</label>
+                <input type="text" id="username" value="testuser" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="password">密码:</label>
+                <input type="password" id="password" value="123456" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="confirmPassword">确认密码:</label>
+                <input type="password" id="confirmPassword" value="123456" required>
+            </div>
+            
+            <button type="submit" id="submitBtn">注册测试</button>
+        </form>
+        
+        <div id="message"></div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://bqbtkaljxsmdcpedrerg.supabase.co'
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxYnRrYWxqeHNtZGNwZWRyZXJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NDg0NDUsImV4cCI6MjA3NDAyNDQ0NX0._XIcJcSg_00b_iOs90QM5GNaKAg5_LEHGDrexDTFcMQ'
+        
+        let supabaseClient = null
+        
+        // 等待Supabase库加载
+        function waitForSupabase() {
+            return new Promise((resolve) => {
+                if (typeof supabase !== 'undefined') {
+                    resolve()
+                } else {
+                    setTimeout(() => waitForSupabase().then(resolve), 100)
+                }
+            })
+        }
+        
+        async function initSupabase() {
+            try {
+                await waitForSupabase()
+                const { createClient } = supabase
+                supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY)
+                showMessage('✅ Supabase客户端初始化成功', 'success')
+            } catch (error) {
+                showMessage(`❌ Supabase初始化失败: ${error.message}`, 'error')
+            }
+        }
+        
+        function showMessage(text, type = 'info') {
+            const messageDiv = document.getElementById('message')
+            messageDiv.innerHTML = `<div class="message ${type}">${text}</div>`
+        }
+        
+        async function handleRegistration(event) {
+            event.preventDefault()
+            
+            const username = document.getElementById('username').value
+            const password = document.getElementById('password').value
+            const confirmPassword = document.getElementById('confirmPassword').value
+            
+            if (password !== confirmPassword) {
+                showMessage('❌ 两次输入的密码不一致', 'error')
+                return
+            }
+            
+            if (!supabaseClient) {
+                showMessage('❌ Supabase客户端未初始化', 'error')
+                return
+            }
+            
+            const submitBtn = document.getElementById('submitBtn')
+            submitBtn.disabled = true
+            submitBtn.textContent = '注册中...'
+            
+            try {
+                showMessage('🔄 正在注册用户...', 'info')
+                
+                // 添加调试信息
+                console.log('开始注册用户:', username)
+                
+                const { data, error } = await supabaseClient.auth.signUp({
+                    email: `${username}@temp.com`,
+                    password: password,
+                    options: {
+                        data: { username: username }
+                    }
+                })
+                
+                if (error) {
+                    console.error('注册错误:', error)
+                    showMessage(`❌ 注册失败: ${error.message}`, 'error')
+                } else {
+                    console.log('注册成功:', data)
+                    showMessage('✅ 注册成功！用户已创建', 'success')
+                    showMessage(`用户ID: ${data.user?.id}`, 'info')
+                    
+                    // 等待一下然后测试用户数据
+                    setTimeout(async () => {
+                        try {
+                            showMessage('🔄 测试用户数据获取...', 'info')
+                            const response = await fetch('http://localhost:8787/auth/user', {
+                                headers: {
+                                    'Authorization': `Bearer ${data.session?.access_token}`
+                                }
+                            })
+                            
+                            if (response.ok) {
+                                const userData = await response.json()
+                                showMessage(`✅ 用户数据获取成功！积分: ${userData.points}`, 'success')
+                            } else {
+                                const errorData = await response.json()
+                                showMessage(`⚠️ 用户数据获取失败: ${errorData.error}`, 'error')
+                            }
+                        } catch (error) {
+                            showMessage(`⚠️ 用户数据测试失败: ${error.message}`, 'error')
+                        }
+                    }, 2000)
+                }
+            } catch (error) {
+                showMessage(`❌ 注册异常: ${error.message}`, 'error')
+            } finally {
+                submitBtn.disabled = false
+                submitBtn.textContent = '注册测试'
+            }
+        }
+        
+        // 页面加载时初始化
+        window.onload = async function() {
+            await initSupabase()
+            document.getElementById('registrationForm').addEventListener('submit', handleRegistration)
+        }
+    </script>
+</body>
+</html>

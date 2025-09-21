@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>直接Supabase测试</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background: #5a6fd8;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .message {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .log {
+            background: #f8f9fa;
+            color: #495057;
+            border: 1px solid #dee2e6;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>🔧 直接Supabase测试</h2>
+        <p>测试Supabase注册功能，不依赖后端服务</p>
+        
+        <div class="form-group">
+            <label for="username">用户名:</label>
+            <input type="text" id="username" value="testuser" placeholder="输入用户名">
+        </div>
+        
+        <div class="form-group">
+            <label for="password">密码:</label>
+            <input type="password" id="password" value="123456" placeholder="输入密码">
+        </div>
+        
+        <button onclick="testSupabaseConnection()">测试Supabase连接</button>
+        <button onclick="testRegistration()">测试注册</button>
+        <button onclick="testLogin()">测试登录</button>
+        <button onclick="clearLog()">清空日志</button>
+        
+        <div id="message"></div>
+        <div id="log"></div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://bqbtkaljxsmdcpedrerg.supabase.co'
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxYnRrYWxqeHNtZGNwZWRyZXJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NDg0NDUsImV4cCI6MjA3NDAyNDQ0NX0._XIcJcSg_00b_iOs90QM5GNaKAg5_LEHGDrexDTFcMQ'
+        
+        let supabaseClient = null
+        
+        // 等待Supabase库加载
+        function waitForSupabase() {
+            return new Promise((resolve) => {
+                if (typeof supabase !== 'undefined') {
+                    resolve()
+                } else {
+                    setTimeout(() => waitForSupabase().then(resolve), 100)
+                }
+            })
+        }
+        
+        async function initSupabase() {
+            try {
+                await waitForSupabase()
+                const { createClient } = supabase
+                supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY)
+                log('✅ Supabase客户端初始化成功')
+                return true
+            } catch (error) {
+                log(`❌ Supabase初始化失败: ${error.message}`)
+                return false
+            }
+        }
+        
+        function log(message) {
+            const logDiv = document.getElementById('log')
+            const timestamp = new Date().toLocaleTimeString()
+            logDiv.innerHTML += `<div>[${timestamp}] ${message}</div>`
+            logDiv.scrollTop = logDiv.scrollHeight
+        }
+        
+        function showMessage(text, type = 'info') {
+            const messageDiv = document.getElementById('message')
+            messageDiv.innerHTML = `<div class="message ${type}">${text}</div>`
+        }
+        
+        function clearLog() {
+            document.getElementById('log').innerHTML = ''
+        }
+        
+        async function testSupabaseConnection() {
+            log('🔄 测试Supabase连接...')
+            showMessage('🔄 测试Supabase连接...', 'info')
+            
+            if (!supabaseClient) {
+                const initialized = await initSupabase()
+                if (!initialized) {
+                    showMessage('❌ Supabase客户端初始化失败', 'error')
+                    return
+                }
+            }
+            
+            try {
+                const { data, error } = await supabaseClient.auth.getUser()
+                if (error) {
+                    if (error.message.includes('Auth session missing')) {
+                        log('✅ Supabase连接正常（未登录状态）')
+                        showMessage('✅ Supabase连接正常', 'success')
+                    } else {
+                        log(`❌ Supabase连接失败: ${error.message}`)
+                        showMessage(`❌ Supabase连接失败: ${error.message}`, 'error')
+                    }
+                } else {
+                    log('✅ Supabase连接成功，用户已登录')
+                    showMessage('✅ Supabase连接成功', 'success')
+                }
+            } catch (error) {
+                log(`❌ Supabase连接异常: ${error.message}`)
+                showMessage(`❌ Supabase连接异常: ${error.message}`, 'error')
+            }
+        }
+        
+        async function testRegistration() {
+            const username = document.getElementById('username').value
+            const password = document.getElementById('password').value
+            
+            if (!username || !password) {
+                showMessage('❌ 请输入用户名和密码', 'error')
+                return
+            }
+            
+            log(`🔄 开始注册用户: ${username}`)
+            showMessage('🔄 正在注册用户...', 'info')
+            
+            if (!supabaseClient) {
+                const initialized = await initSupabase()
+                if (!initialized) {
+                    showMessage('❌ Supabase客户端初始化失败', 'error')
+                    return
+                }
+            }
+            
+            try {
+                const { data, error } = await supabaseClient.auth.signUp({
+                    email: `${username}@temp.com`,
+                    password: password,
+                    options: {
+                        data: { username: username }
+                    }
+                })
+                
+                if (error) {
+                    log(`❌ 注册失败: ${error.message}`)
+                    showMessage(`❌ 注册失败: ${error.message}`, 'error')
+                } else {
+                    log(`✅ 注册成功！用户ID: ${data.user?.id}`)
+                    showMessage('✅ 注册成功！', 'success')
+                    
+                    if (data.session) {
+                        log(`✅ 用户已自动登录，访问令牌: ${data.session.access_token.substring(0, 20)}...`)
+                    }
+                }
+            } catch (error) {
+                log(`❌ 注册异常: ${error.message}`)
+                showMessage(`❌ 注册异常: ${error.message}`, 'error')
+            }
+        }
+        
+        async function testLogin() {
+            const username = document.getElementById('username').value
+            const password = document.getElementById('password').value
+            
+            if (!username || !password) {
+                showMessage('❌ 请输入用户名和密码', 'error')
+                return
+            }
+            
+            log(`🔄 开始登录用户: ${username}`)
+            showMessage('🔄 正在登录用户...', 'info')
+            
+            if (!supabaseClient) {
+                const initialized = await initSupabase()
+                if (!initialized) {
+                    showMessage('❌ Supabase客户端初始化失败', 'error')
+                    return
+                }
+            }
+            
+            try {
+                const { data, error } = await supabaseClient.auth.signInWithPassword({
+                    email: `${username}@temp.com`,
+                    password: password
+                })
+                
+                if (error) {
+                    log(`❌ 登录失败: ${error.message}`)
+                    showMessage(`❌ 登录失败: ${error.message}`, 'error')
+                } else {
+                    log(`✅ 登录成功！用户ID: ${data.user?.id}`)
+                    showMessage('✅ 登录成功！', 'success')
+                    log(`✅ 访问令牌: ${data.session?.access_token.substring(0, 20)}...`)
+                }
+            } catch (error) {
+                log(`❌ 登录异常: ${error.message}`)
+                showMessage(`❌ 登录异常: ${error.message}`, 'error')
+            }
+        }
+        
+        // 页面加载时初始化
+        window.onload = async function() {
+            log('页面加载完成，初始化Supabase...')
+            await initSupabase()
+        }
+    </script>
+</body>
+</html>
