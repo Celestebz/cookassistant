@@ -68,16 +68,24 @@ function parseRecipeInfo(text) {
     const stepsText = stepsMatch[1];
     const stepLines = stepsText.split('\n').filter(line => /^\d+\./.test(line.trim()));
     result.steps = stepLines.map(line => {
-      return line.replace(/^\d+\.\s*/, '').trim();
+      // 移除步骤编号和多余的**符号
+      let cleanLine = line.replace(/^\d+\.\s*/, '').trim();
+      // 移除所有**符号
+      cleanLine = cleanLine.replace(/\*\*/g, '');
+      return cleanLine;
     });
   }
   
   // 如果没有找到结构化信息，尝试从原始文本中提取
   if (!result.dishName && !result.ingredients.length && !result.steps.length) {
     const lines = text.split('\n').filter(line => line.trim());
-    result.steps = lines.filter(line => /^\d+\./.test(line.trim())).map(line => 
-      line.replace(/^\d+\.\s*/, '').trim()
-    );
+    result.steps = lines.filter(line => /^\d+\./.test(line.trim())).map(line => {
+      // 移除步骤编号和多余的**符号
+      let cleanLine = line.replace(/^\d+\.\s*/, '').trim();
+      // 移除所有**符号
+      cleanLine = cleanLine.replace(/\*\*/g, '');
+      return cleanLine;
+    });
     
     // 尝试从步骤中推断菜品名称
     const allText = text.toLowerCase();
