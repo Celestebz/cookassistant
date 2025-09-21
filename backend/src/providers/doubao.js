@@ -1,4 +1,4 @@
-import { fetch } from 'undici';
+import fetch from 'node-fetch';
 import { withRetry } from './shared.js';
 
 const DOUBAO_ENDPOINT = 'https://ark.cn-beijing.volces.com/api/v3/chat/completions';
@@ -8,10 +8,14 @@ export async function generateRecipeSteps({ imageUrl, prompt, model = 'ep-202509
   
   console.log('Doubao API调用参数:', { imageUrl, model, apiKey: apiKey ? '已设置' : '未设置' });
   console.log('API密钥值:', apiKey);
+  console.log('即将调用Doubao API...');
   
   // 检查API密钥是否有效
   if (!apiKey || apiKey === 'your_doubao_api_key_here' || apiKey === 'test_key_for_demo') {
     console.log('使用模拟数据，API密钥未正确设置');
+    console.log('当前API密钥:', apiKey);
+    console.log('环境变量DOUBAO_API_KEY:', process.env.DOUBAO_API_KEY);
+    console.log('⚠️  警告：API密钥检查失败，将返回模拟数据');
     // 返回通用的菜谱模板，让用户知道需要手动输入
     return `**菜品名称：** 识别菜品
 
@@ -25,6 +29,14 @@ export async function generateRecipeSteps({ imageUrl, prompt, model = 'ep-202509
 3. 确保步骤与图片中的成品相符
 4. 可以添加个人经验和技巧`;
   }
+  
+  console.log('✅ API密钥检查通过，将调用真实的Doubao API');
+  console.log('API密钥长度:', apiKey.length);
+  console.log('API密钥前4位:', apiKey.substring(0, 4));
+  console.log('即将发送真实API请求到Doubao...');
+  console.log('API端点:', DOUBAO_ENDPOINT);
+  console.log('图片URL:', imageUrl);
+  console.log('提示词:', prompt);
   const body = {
     model,
     temperature,
@@ -42,23 +54,32 @@ export async function generateRecipeSteps({ imageUrl, prompt, model = 'ep-202509
     console.log('发送API请求到:', DOUBAO_ENDPOINT);
     console.log('请求体:', JSON.stringify(body, null, 2));
     
-    const res = await withRetry(async () => {
-      const response = await fetch(DOUBAO_ENDPOINT, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
-        },
-        body: JSON.stringify(body)
-      });
-      console.log('原始响应对象:', response);
-      console.log('响应状态:', response.status);
-      console.log('响应状态文本:', response.statusText);
-      return response;
-    }, { retries: 1, delayMs: 600 });
+    console.log('🌐 开始发送API请求到:', DOUBAO_ENDPOINT);
+    const response = await fetch(DOUBAO_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify(body)
+    });
+    console.log('原始响应对象类型:', typeof response);
+    console.log('响应状态:', response?.status);
+    console.log('响应状态文本:', response?.statusText);
+    console.log('响应对象键值:', Object.keys(response || {}));
+    
+    if (!response) {
+      throw new Error('API调用返回了undefined响应');
+    }
+    
+    const res = response;
     
     console.log('Doubao API响应状态:', res.status, res.statusText);
-    console.log('响应头:', Object.fromEntries(res.headers.entries()));
+    if (res.headers && typeof res.headers.entries === 'function') {
+      console.log('响应头:', Object.fromEntries(res.headers.entries()));
+    } else {
+      console.log('响应头不可用或格式不支持');
+    }
     
     if (!res.ok) {
       let errorText = '';

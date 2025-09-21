@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试显示功能</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://code.iconify.design/3/3.1.1/iconify.min.js"></script>
+</head>
+<body class="bg-gray-50">
+    <div class="container mx-auto p-8">
+        <h1 class="text-3xl font-bold mb-8">测试显示功能</h1>
+        
+        <div class="bg-white p-6 rounded-lg shadow">
+            <h2 class="text-xl font-semibold mb-4">测试数据</h2>
+            <button id="testBtn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                测试显示
+            </button>
+            
+            <div id="results" class="mt-6 hidden">
+                <h3 id="recipeTitle" class="text-2xl font-bold text-gray-800 mb-4">推荐菜谱</h3>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-green-50 p-4 rounded-lg">
+                        <h4 class="font-semibold mb-3">食材清单</h4>
+                        <div id="ingredientsList" class="space-y-2">
+                            <!-- 动态生成的食材列表 -->
+                        </div>
+                    </div>
+                    
+                    <div class="bg-orange-50 p-4 rounded-lg">
+                        <h4 class="font-semibold mb-3">烹饪步骤</h4>
+                        <div id="recipeSteps" class="space-y-3">
+                            <!-- 动态生成的菜谱步骤 -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 测试数据
+        const testData = {
+            recipe: {
+                name: "红烧排骨",
+                ingredients: [
+                    {name: "排骨 500克", amount: ""},
+                    {name: "冰糖 30克", amount: ""},
+                    {name: "生抽 2汤匙", amount: ""},
+                    {name: "老抽 1汤匙", amount: ""},
+                    {name: "料酒 1汤匙", amount: ""},
+                    {name: "葱姜蒜 适量", amount: ""},
+                    {name: "八角 2个", amount: ""},
+                    {name: "桂皮 1块", amount: ""}
+                ],
+                steps: [
+                    "排骨洗净切段，冷水下锅焯水，加入料酒和姜片去腥，煮沸后撇去浮沫，捞出备用。",
+                    "热锅冷油，放入冰糖小火炒至焦糖色，加入排骨翻炒上色。",
+                    "加入葱姜蒜爆香，然后加入生抽、老抽翻炒均匀，倒入热水没过排骨。",
+                    "加入八角、桂皮，中小火炖煮40分钟至排骨软烂，大火收汁即可。"
+                ]
+            }
+        };
+
+        // 显示食材清单
+        function displayIngredients(ingredients) {
+            const container = document.getElementById('ingredientsList');
+            container.innerHTML = '';
+            
+            ingredients.forEach(ingredient => {
+                const item = document.createElement('div');
+                item.className = 'flex items-center p-2 bg-white rounded border-l-4 border-green-400';
+                item.innerHTML = `
+                    <div class="flex-1">
+                        <div class="font-medium text-gray-800">${ingredient.name}</div>
+                        ${ingredient.amount ? `<div class="text-sm text-gray-600">用量: ${ingredient.amount}</div>` : ''}
+                        ${ingredient.preparation ? `<div class="text-sm text-gray-600">处理: ${ingredient.preparation}</div>` : ''}
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        // 显示烹饪步骤
+        function displaySteps(steps) {
+            const container = document.getElementById('recipeSteps');
+            container.innerHTML = '';
+            
+            steps.forEach((step, index) => {
+                const stepEl = document.createElement('div');
+                stepEl.className = 'flex items-start p-4 bg-white rounded-lg border-l-4 border-orange-400';
+                stepEl.innerHTML = `
+                    <div class="flex-shrink-0 w-8 h-8 bg-orange-500 text-white rounded-full flex items-center justify-center font-bold text-sm mr-4">
+                        ${index + 1}
+                    </div>
+                    <div class="flex-1 text-gray-700 leading-relaxed">${step}</div>
+                `;
+                container.appendChild(stepEl);
+            });
+        }
+
+        // 测试按钮点击事件
+        document.getElementById('testBtn').addEventListener('click', function() {
+            console.log('开始测试显示功能...');
+            
+            // 显示菜品名称
+            if (testData.recipe.name) {
+                document.getElementById('recipeTitle').textContent = testData.recipe.name;
+                console.log('菜品名称已设置:', testData.recipe.name);
+            }
+            
+            // 显示食材清单
+            if (testData.recipe.ingredients?.length) {
+                console.log('显示食材清单:', testData.recipe.ingredients);
+                displayIngredients(testData.recipe.ingredients);
+            }
+            
+            // 显示烹饪步骤
+            if (testData.recipe.steps?.length) {
+                console.log('显示烹饪步骤:', testData.recipe.steps);
+                displaySteps(testData.recipe.steps);
+            }
+            
+            // 显示结果区域
+            document.getElementById('results').classList.remove('hidden');
+            console.log('测试完成！');
+        });
+    </script>
+</body>
+</html>
+

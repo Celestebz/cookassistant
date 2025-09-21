@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试API数据显示</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://code.iconify.design/3/3.1.1/iconify.min.js"></script>
+</head>
+<body class="bg-gray-50">
+    <div class="container mx-auto p-8">
+        <h1 class="text-3xl font-bold mb-8">测试API数据显示</h1>
+        
+        <div class="bg-white p-6 rounded-lg shadow mb-6">
+            <h2 class="text-xl font-semibold mb-4">测试真实API数据</h2>
+            <button id="testRealAPI" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 mr-4">
+                测试真实API
+            </button>
+            <button id="clearResults" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">
+                清空结果
+            </button>
+        </div>
+        
+        <div id="results" class="hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-green-50 p-6 rounded-lg">
+                    <h3 class="text-xl font-bold text-gray-800 mb-4">食材清单</h3>
+                    <div id="ingredientsList" class="space-y-3">
+                        <!-- 动态生成的食材列表 -->
+                    </div>
+                </div>
+                
+                <div class="bg-orange-50 p-6 rounded-lg">
+                    <h3 id="recipeTitle" class="text-xl font-bold text-gray-800 mb-4">推荐菜谱</h3>
+                    <div id="recipeSteps" class="space-y-4">
+                        <!-- 动态生成的菜谱步骤 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 显示食材清单
+        function displayIngredients(ingredients) {
+            const container = document.getElementById('ingredientsList');
+            container.innerHTML = '';
+            
+            ingredients.forEach(ingredient => {
+                const item = document.createElement('div');
+                item.className = 'flex items-center p-3 bg-white rounded-lg border-l-4 border-green-400';
+                item.innerHTML = `
+                    <div class="flex-shrink-0 w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center mr-3">
+                        <iconify-icon icon="mdi:food" class="text-sm"></iconify-icon>
+                    </div>
+                    <div class="flex-1">
+                        <div class="font-medium text-gray-800">${ingredient.name}</div>
+                        ${ingredient.amount ? `<div class="text-sm text-gray-600">用量: ${ingredient.amount}</div>` : ''}
+                        ${ingredient.preparation ? `<div class="text-sm text-gray-600">处理: ${ingredient.preparation}</div>` : ''}
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        // 显示烹饪步骤
+        function displaySteps(steps) {
+            const container = document.getElementById('recipeSteps');
+            container.innerHTML = '';
+            
+            steps.forEach((step, index) => {
+                const stepEl = document.createElement('div');
+                stepEl.className = 'flex items-start p-4 bg-white rounded-lg border-l-4 border-orange-400';
+                stepEl.innerHTML = `
+                    <div class="flex-shrink-0 w-8 h-8 bg-orange-500 text-white rounded-full flex items-center justify-center font-bold text-sm mr-4">
+                        ${index + 1}
+                    </div>
+                    <div class="flex-1 text-gray-700 leading-relaxed">${step}</div>
+                `;
+                container.appendChild(stepEl);
+            });
+        }
+
+        // 测试真实API数据
+        document.getElementById('testRealAPI').addEventListener('click', async function() {
+            console.log('开始测试真实API数据...');
+            
+            try {
+                // 模拟从API获取的数据
+                const apiData = {
+                    recipe: {
+                        name: "红烧排骨",
+                        ingredients: [
+                            {name: "排骨 500克", amount: ""},
+                            {name: "冰糖 30克", amount: ""},
+                            {name: "生抽 2汤匙", amount: ""},
+                            {name: "老抽 1汤匙", amount: ""},
+                            {name: "料酒 1汤匙", amount: ""},
+                            {name: "葱姜蒜 适量", amount: ""},
+                            {name: "八角 2个", amount: ""},
+                            {name: "桂皮 1块", amount: ""}
+                        ],
+                        steps: [
+                            "排骨洗净切段，冷水下锅焯水，加入料酒和姜片去腥，煮沸后撇去浮沫，捞出备用。",
+                            "热锅冷油，放入冰糖小火炒至焦糖色，加入排骨翻炒上色。",
+                            "加入葱姜蒜爆香，然后加入生抽、老抽翻炒均匀，倒入热水没过排骨。",
+                            "加入八角、桂皮，中小火炖煮40分钟至排骨软烂，大火收汁即可。"
+                        ]
+                    }
+                };
+                
+                console.log('收到API数据:', apiData);
+                
+                // 显示菜品名称
+                if (apiData.recipe.name) {
+                    document.getElementById('recipeTitle').textContent = apiData.recipe.name;
+                    console.log('菜品名称已设置:', apiData.recipe.name);
+                }
+                
+                // 显示食材清单
+                if (apiData.recipe.ingredients?.length) {
+                    console.log('显示食材清单:', apiData.recipe.ingredients);
+                    displayIngredients(apiData.recipe.ingredients);
+                }
+                
+                // 显示烹饪步骤
+                if (apiData.recipe.steps?.length) {
+                    console.log('显示烹饪步骤:', apiData.recipe.steps);
+                    displaySteps(apiData.recipe.steps);
+                }
+                
+                // 显示结果区域
+                document.getElementById('results').classList.remove('hidden');
+                console.log('API数据显示完成！');
+                
+            } catch (error) {
+                console.error('测试失败:', error);
+                alert('测试失败: ' + error.message);
+            }
+        });
+
+        // 清空结果
+        document.getElementById('clearResults').addEventListener('click', function() {
+            document.getElementById('results').classList.add('hidden');
+            document.getElementById('ingredientsList').innerHTML = '';
+            document.getElementById('recipeSteps').innerHTML = '';
+            document.getElementById('recipeTitle').textContent = '推荐菜谱';
+            console.log('结果已清空');
+        });
+    </script>
+</body>
+</html>
+

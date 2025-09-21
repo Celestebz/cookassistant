@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>清洁测试页面</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://code.iconify.design/3/3.1.1/iconify.min.js"></script>
+    <style>
+        body { font-family: 'Noto Sans SC', sans-serif; }
+        #resultsSection { display: none; }
+        #resultsSection.show { display: block !important; }
+    </style>
+</head>
+<body class="bg-gray-50 p-8">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold mb-8">清洁测试页面</h1>
+        
+        <div class="bg-white p-6 rounded-lg shadow-lg mb-6">
+            <h2 class="text-xl font-semibold mb-4">上传图片测试</h2>
+            <input type="file" id="fileInput" accept="image/*" class="mb-4">
+            <button id="uploadBtn" class="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 mr-4">
+                上传图片
+            </button>
+            <button id="testBtn" class="bg-green-500 text-white px-6 py-3 rounded-lg hover:bg-green-600">
+                测试显示
+            </button>
+        </div>
+        
+        <div id="status" class="mb-4 p-3 bg-blue-100 rounded-lg hidden">
+            <span id="statusText">状态信息</span>
+        </div>
+        
+        <div id="error" class="mb-4 p-3 bg-red-100 text-red-700 rounded-lg hidden">
+            <span id="errorText">错误信息</span>
+        </div>
+        
+        <section id="resultsSection" class="hidden">
+            <div class="bg-white p-6 rounded-lg shadow-lg">
+                <h2 id="recipeTitle" class="text-2xl font-bold mb-4">推荐菜谱</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-green-50 p-4 rounded-lg">
+                        <h3 class="font-semibold mb-3">食材清单</h3>
+                        <div id="ingredientsList" class="space-y-2">
+                            <!-- 动态生成的食材列表 -->
+                        </div>
+                    </div>
+                    
+                    <div class="bg-orange-50 p-4 rounded-lg">
+                        <h3 class="font-semibold mb-3">烹饪步骤</h3>
+                        <div id="recipeSteps" class="space-y-3">
+                            <!-- 动态生成的菜谱步骤 -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        const API = (path) => `http://localhost:8787${path}`;
+        
+        function el(id) {
+            return document.getElementById(id);
+        }
+        
+        function setStatus(text) {
+            const statusEl = el('status');
+            const statusTextEl = el('statusText');
+            if (statusEl && statusTextEl) {
+                statusTextEl.textContent = text;
+                statusEl.classList.remove('hidden');
+            }
+        }
+        
+        function setError(text) {
+            const errorEl = el('error');
+            const errorTextEl = el('errorText');
+            if (errorEl && errorTextEl) {
+                errorTextEl.textContent = text;
+                errorEl.classList.remove('hidden');
+            }
+        }
+        
+        function showResults() {
+            console.log('显示结果区域');
+            const resultsEl = el('resultsSection');
+            if (resultsEl) {
+                resultsEl.classList.remove('hidden');
+                resultsEl.classList.add('show');
+                console.log('结果区域已显示');
+            }
+        }
+        
+        function displayIngredients(ingredients) {
+            const container = el('ingredientsList');
+            if (!container) return;
+            
+            container.innerHTML = '';
+            if (!ingredients || ingredients.length === 0) {
+                container.innerHTML = '<div class="text-center text-gray-500 py-4">暂无食材信息</div>';
+                return;
+            }
+            
+            ingredients.forEach(ingredient => {
+                const item = document.createElement('div');
+                item.className = 'flex items-center p-2 bg-white rounded border-l-4 border-green-400';
+                item.innerHTML = `
+                    <div class="flex-shrink-0 w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center mr-3">
+                        <iconify-icon icon="mdi:food" class="text-xs"></iconify-icon>
+                    </div>
+                    <div class="flex-1">
+                        <div class="font-medium text-gray-800">${ingredient.name}</div>
+                        ${ingredient.amount ? `<div class="text-sm text-gray-600">用量: ${ingredient.amount}</div>` : ''}
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+        }
+        
+        function displaySteps(steps) {
+            const container = el('recipeSteps');
+            if (!container) return;
+            
+            container.innerHTML = '';
+            if (!steps || steps.length === 0) {
+                container.innerHTML = '<div class="text-center text-gray-500 py-4">暂无步骤信息</div>';
+                return;
+            }
+            
+            steps.forEach((step, index) => {
+                const stepEl = document.createElement('div');
+                stepEl.className = 'flex items-start p-3 bg-white rounded border-l-4 border-orange-400';
+                stepEl.innerHTML = `
+                    <div class="flex-shrink-0 w-6 h-6 bg-orange-500 text-white rounded-full flex items-center justify-center font-bold text-xs mr-3">
+                        ${index + 1}
+                    </div>
+                    <div class="flex-1 text-gray-700 text-sm">${step}</div>
+                `;
+                container.appendChild(stepEl);
+            });
+        }
+        
+        async function createJob(file) {
+            const formData = new FormData();
+            formData.append('image', file);
+            
+            const response = await fetch(API('/jobs'), {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (!response.ok) {
+                throw new Error(`上传失败: ${response.status} ${response.statusText}`);
+            }
+            
+            return response.json();
+        }
+        
+        async function getJob(id) {
+            const response = await fetch(API(`/jobs/${id}`));
+            if (!response.ok) {
+                throw new Error(`查询失败: ${response.status} ${response.statusText}`);
+            }
+            return response.json();
+        }
+        
+        async function pollJob(id) {
+            let attempts = 0;
+            const maxAttempts = 30;
+            
+            while (attempts < maxAttempts) {
+                const job = await getJob(id);
+                console.log('任务状态:', job.status);
+                
+                if (job.status === 'succeeded' || job.status === 'partial' || job.status === 'failed') {
+                    console.log('任务完成，菜谱数据:', job.recipe);
+                    
+                    if (job.recipe) {
+                        if (job.recipe.name) {
+                            el('recipeTitle').textContent = job.recipe.name;
+                        }
+                        
+                        if (job.recipe.ingredients?.length) {
+                            displayIngredients(job.recipe.ingredients);
+                        }
+                        
+                        if (job.recipe.steps?.length) {
+                            displaySteps(job.recipe.steps);
+                        }
+                        
+                        showResults();
+                    }
+                    
+                    return job;
+                }
+                
+                attempts++;
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+            
+            throw new Error('轮询超时');
+        }
+        
+        // 上传按钮事件
+        el('uploadBtn').addEventListener('click', async () => {
+            const fileInput = el('fileInput');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                setError('请先选择图片文件');
+                return;
+            }
+            
+            try {
+                setStatus('正在上传图片...');
+                setError('');
+                
+                const job = await createJob(file);
+                console.log('任务创建成功:', job);
+                
+                setStatus('正在分析图片，请稍候...');
+                
+                const result = await pollJob(job.id);
+                console.log('分析完成:', result);
+                
+                setStatus('分析完成！');
+            } catch (error) {
+                console.error('处理失败:', error);
+                setError('处理失败: ' + error.message);
+            }
+        });
+        
+        // 测试按钮事件
+        el('testBtn').addEventListener('click', () => {
+            console.log('测试显示功能');
+            
+            const testData = {
+                recipe: {
+                    name: "红烧排骨",
+                    ingredients: [
+                        {name: "排骨 500克", amount: "500克"},
+                        {name: "冰糖 30克", amount: "30克"},
+                        {name: "生抽 2汤匙", amount: "2汤匙"}
+                    ],
+                    steps: [
+                        "排骨洗净切段，冷水下锅焯水，加入料酒和姜片去腥，煮沸后撇去浮沫，捞出备用。",
+                        "热锅冷油，放入冰糖小火炒至焦糖色，加入排骨翻炒上色。"
+                    ]
+                }
+            };
+            
+            if (testData.recipe.name) {
+                el('recipeTitle').textContent = testData.recipe.name;
+            }
+            
+            if (testData.recipe.ingredients?.length) {
+                displayIngredients(testData.recipe.ingredients);
+            }
+            
+            if (testData.recipe.steps?.length) {
+                displaySteps(testData.recipe.steps);
+            }
+            
+            showResults();
+            setStatus('测试显示完成！');
+        });
+    </script>
+</body>
+</html>

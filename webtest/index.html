@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
-<head>
+  <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>智能烹饪助手 - 图片转菜谱</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js" onerror="console.warn('Iconify加载失败，但不影响核心功能')"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js" onerror="console.warn('ECharts加载失败，但不影响核心功能')"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;600;700;900&display=swap');
         
@@ -75,6 +75,19 @@
         
         .animate-fade-in {
             animation: fadeIn 0.6s ease-out forwards;
+            opacity: 1 !important;
+            display: block !important;
+            visibility: visible !important;
+        }
+        
+        #resultsSection {
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+        }
+        
+        #resultsSection.hidden {
+            display: none !important;
         }
         
         /* Smooth transition for ingredients and recipes */
@@ -103,8 +116,8 @@
         
         .hidden { display: none; }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <div class="container">
         <!-- 顶部导航 -->
         <header class="bg-white py-4 px-8 flex items-center justify-between border-b border-gray-100">
@@ -170,7 +183,7 @@
             </section>
             
             <!-- 食材与菜谱结果区 -->
-            <section id="resultsSection" class="transition-section opacity-0 transform translate-y-8 px-16 mb-16 hidden">
+            <section id="resultsSection" class="transition-section px-16 mb-16 hidden">
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-10">
                     <!-- 左侧食材区域 -->
                     <div class="bg-green-50 p-6 rounded-2xl">
@@ -282,7 +295,7 @@
             <section id="actionSection" class="transition-section opacity-0 transform translate-y-8 px-16 mb-16 hidden">
                 <div class="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm">
                     <div class="flex items-center justify-between flex-wrap gap-4">
-                        <div>
+      <div>
                             <h3 class="text-xl font-bold text-gray-800">完成分析, 下一步操作</h3>
                             <p class="text-gray-500">保存、分享或打印您的个性化菜谱</p>
                         </div>
@@ -303,8 +316,8 @@
                                 不准确
                             </button>
                         </div>
-                    </div>
-                    
+      </div>
+
                     <div class="mt-8 pt-6 border-t border-gray-100">
                         <div class="flex space-x-4">
                             <button class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg">
@@ -337,7 +350,7 @@
                             <iconify-icon icon="mdi:chef-hat" style="color: white;" width="28" height="28"></iconify-icon>
                         </div>
                         <h3 class="text-white text-xl font-bold ml-2">美味助手</h3>
-                    </div>
+        </div>
                     <p class="mb-4 text-gray-400">
                         用科技让烹饪更简单，让美味没有门槛
                     </p>
@@ -345,9 +358,9 @@
                         <a href="#" class="text-gray-400 hover:text-white"><iconify-icon icon="mdi:wechat" width="22"></iconify-icon></a>
                         <a href="#" class="text-gray-400 hover:text-white"><iconify-icon icon="mdi:weibo" width="22"></iconify-icon></a>
                         <a href="#" class="text-gray-400 hover:text-white"><iconify-icon icon="mdi:instagram" width="22"></iconify-icon></a>
-                    </div>
-                </div>
-                
+        </div>
+      </div>
+
                 <div>
                     <h4 class="text-white font-medium mb-4">关于我们</h4>
                     <ul class="space-y-2">
@@ -366,8 +379,8 @@
                         <li><a href="#" class="hover:text-white">隐私政策</a></li>
                         <li><a href="#" class="hover:text-white">联系客服</a></li>
                     </ul>
-                </div>
-                
+      </div>
+
                 <div>
                     <h4 class="text-white font-medium mb-4">订阅更新</h4>
                     <p class="mb-4">获取最新食谱和烹饪技巧</p>
@@ -375,7 +388,7 @@
                         <input type="email" placeholder="您的邮箱地址" class="px-4 py-2 bg-gray-700 text-white rounded-l-lg w-full focus:outline-none">
                         <button class="bg-orange-500 text-white px-4 rounded-r-lg">订阅</button>
                     </div>
-                </div>
+      </div>
             </div>
             
             <div class="mt-10 pt-6 border-t border-gray-700 text-center text-gray-500 text-sm">
@@ -386,7 +399,16 @@
     </div>
 
     <script>
-      const API = (path) => `http://localhost:8787${path}`;
+        // 忽略外部SDK加载错误
+        window.addEventListener('error', function(e) {
+            if (e.message && e.message.includes('growthbook')) {
+                console.warn('忽略外部SDK错误:', e.message);
+                e.preventDefault();
+                return false;
+            }
+        });
+        
+        const API = (path) => `http://localhost:8787${path}`;
       const el = (id) => document.getElementById(id);
       let currentJobId = null;
 
@@ -425,12 +447,39 @@
       }
 
       function showResults() {
+        console.log('开始显示结果区域...');
         const resultsEl = el('resultsSection');
         if (resultsEl) {
+          console.log('找到resultsSection元素');
+          console.log('当前类列表:', resultsEl.classList.toString());
+          
+          // 移除所有隐藏类
           resultsEl.classList.remove('hidden');
           resultsEl.classList.remove('opacity-0', 'transform', 'translate-y-8');
+          
+          // 强制显示样式
+          resultsEl.style.display = 'block';
+          resultsEl.style.visibility = 'visible';
+          resultsEl.style.opacity = '1';
+          resultsEl.style.transform = 'none';
+          resultsEl.style.position = 'relative';
+          resultsEl.style.zIndex = '10';
+          
+          // 添加动画类
           resultsEl.classList.add('animate-fade-in');
+          
           console.log('结果显示区域已显示');
+          console.log('更新后类列表:', resultsEl.classList.toString());
+          console.log('计算样式:', window.getComputedStyle(resultsEl).display);
+          console.log('强制显示样式已应用');
+          
+          // 验证内容是否存在
+          const titleEl = el('recipeTitle');
+          const ingredientsEl = el('ingredientsList');
+          const stepsEl = el('recipeSteps');
+          console.log('标题元素:', titleEl ? '存在' : '不存在');
+          console.log('食材容器:', ingredientsEl ? '存在' : '不存在');
+          console.log('步骤容器:', stepsEl ? '存在' : '不存在');
         } else {
           console.error('找不到resultsSection元素');
         }

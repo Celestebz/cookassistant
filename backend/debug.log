@@ -1,0 +1,301 @@
+{"level":30,"time":1758435245990,"pid":11109,"hostname":"celestes-MacBook-Pro.local","msg":"Server listening at http://0.0.0.0:8787"}
+{"level":30,"time":1758435245990,"pid":11109,"hostname":"celestes-MacBook-Pro.local","msg":"API listening on http://localhost:8787"}
+{"level":30,"time":1758435254818,"pid":11109,"hostname":"celestes-MacBook-Pro.local","reqId":"req-1","req":{"method":"POST","url":"/jobs","hostname":"localhost:8787","remoteAddress":"127.0.0.1","remotePort":55413},"msg":"incoming request"}
+Doubao API调用参数: {
+  imageUrl: 'http://localhost:8787/uploads/in_1758435254821_heyivm8nopc.jpeg',
+  model: 'ep-20250921085349-k25sf',
+  apiKey: '已设置'
+}
+API密钥值: 3dafef81-fdc1-4148-bb39-87c396f94c2a
+发送API请求到: https://ark.cn-beijing.volces.com/api/v3/chat/completions
+请求体: {
+  "model": "ep-20250921085349-k25sf",
+  "temperature": 0.3,
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "image_url",
+          "image_url": {
+            "url": "http://localhost:8787/uploads/in_1758435254821_heyivm8nopc.jpeg"
+          }
+        },
+        {
+          "type": "text",
+          "text": "你是一名专业中餐厨师与美食编辑。请仔细观察图片中的成品菜，按以下格式输出完整信息：\n\n**菜品名称：** [识别出的菜品名称]\n\n**主要食材：**\n- [食材1] [用量]\n- [食材2] [用量]\n- [食材3] [用量]\n- ...\n\n**烹饪步骤：**\n1. [第一步详细描述]\n2. [第二步详细描述]\n3. [第三步详细描述]\n4. [第四步详细描述]\n\n要求：\n- 准确识别菜品名称和主要食材\n- 食材用量用公制单位（克、毫升、汤匙、茶匙、个）\n- 烹饪步骤3-8条，与图片菜品完全匹配\n- 用家庭厨具与常见食材表达，语气简洁\n- 强调关键火候与时长\n- 确保步骤能做出图片中相同的菜品\n\n\n\n\n"
+        }
+      ]
+    }
+  ]
+}
+Doubao API响应状态: undefined undefined
+Doubao API调用失败: TypeError: Cannot read properties of undefined (reading 'entries')
+    at generateRecipeSteps (file:///Users/celeste/Documents/04%20AIGC/coding/cook/backend/src/providers/doubao.js:61:56)
+    at async processJob (file:///Users/celeste/Documents/04%20AIGC/coding/cook/backend/src/index.js:139:19)
+错误详情: Cannot read properties of undefined (reading 'entries')
+错误堆栈: TypeError: Cannot read properties of undefined (reading 'entries')
+    at generateRecipeSteps (file:///Users/celeste/Documents/04%20AIGC/coding/cook/backend/src/providers/doubao.js:61:56)
+    at async processJob (file:///Users/celeste/Documents/04%20AIGC/coding/cook/backend/src/index.js:139:19)
+图片文件名: in_1758435254821_heyivm8nopc.jpeg
+解析的菜谱信息: {
+  dishName: '红烧排骨',
+  ingredients: [
+    { name: '排骨 500克', amount: '', preparation: '' },
+    { name: '冰糖 30克', amount: '', preparation: '' },
+    { name: '生抽 2汤匙', amount: '', preparation: '' },
+    { name: '老抽 1汤匙', amount: '', preparation: '' },
+    { name: '料酒 1汤匙', amount: '', preparation: '' },
+    { name: '葱姜蒜 适量', amount: '', preparation: '' },
+    { name: '八角 2个', amount: '', preparation: '' },
+    { name: '桂皮 1块', amount: '', preparation: '' }
+  ],
+  steps: [
+    '排骨洗净切段，冷水下锅焯水，加入料酒和姜片去腥，煮沸后撇去浮沫，捞出备用。',
+    '热锅冷油，放入冰糖小火炒至焦糖色，加入排骨翻炒上色。',
+    '加入葱姜蒜爆香，然后加入生抽、老抽翻炒均匀，倒入热水没过排骨。',
+    '加入八角、桂皮，中小火炖煮40分钟至排骨软烂，大火收汁即可。'
+  ]
+}
+最终菜谱数据: {
+  ingredients: [
+    { name: '排骨 500克', amount: '', preparation: '' },
+    { name: '冰糖 30克', amount: '', preparation: '' },
+    { name: '生抽 2汤匙', amount: '', preparation: '' },
+    { name: '老抽 1汤匙', amount: '', preparation: '' },
+    { name: '料酒 1汤匙', amount: '', preparation: '' },
+    { name: '葱姜蒜 适量', amount: '', preparation: '' },
+    { name: '八角 2个', amount: '', preparation: '' },
+    { name: '桂皮 1块', amount: '', preparation: '' }
+  ],
+  steps: [
+    '排骨洗净切段，冷水下锅焯水，加入料酒和姜片去腥，煮沸后撇去浮沫，捞出备用。',
+    '热锅冷油，放入冰糖小火炒至焦糖色，加入排骨翻炒上色。',
+    '加入葱姜蒜爆香，然后加入生抽、老抽翻炒均匀，倒入热水没过排骨。',
+    '加入八角、桂皮，中小火炖煮40分钟至排骨软烂，大火收汁即可。'
+  ],
+  locale: 'zh-CN',
+  name: '红烧排骨'
+}
+{"level":30,"time":1758435254827,"pid":11109,"hostname":"celestes-MacBook-Pro.local","reqId":"req-1","res":{"statusCode":201},"responseTime":8.85779200005345,"msg":"request completed"}
+{"level":30,"time":1758435447226,"pid":11109,"hostname":"celestes-MacBook-Pro.local","reqId":"req-2","req":{"method":"POST","url":"/jobs","hostname":"localhost:8787","remoteAddress":"127.0.0.1","remotePort":55523},"msg":"incoming request"}
+Doubao API调用参数: {
+  imageUrl: 'http://localhost:8787/uploads/in_1758435447227_es17y9jnlfe.jpeg',
+  model: 'ep-20250921085349-k25sf',
+  apiKey: '已设置'
+}
+API密钥值: 3dafef81-fdc1-4148-bb39-87c396f94c2a
+发送API请求到: https://ark.cn-beijing.volces.com/api/v3/chat/completions
+请求体: {
+  "model": "ep-20250921085349-k25sf",
+  "temperature": 0.3,
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "image_url",
+          "image_url": {
+            "url": "http://localhost:8787/uploads/in_1758435447227_es17y9jnlfe.jpeg"
+          }
+        },
+        {
+          "type": "text",
+          "text": "你是一名专业中餐厨师与美食编辑。请仔细观察图片中的成品菜，按以下格式输出完整信息：\n\n**菜品名称：** [识别出的菜品名称]\n\n**主要食材：**\n- [食材1] [用量]\n- [食材2] [用量]\n- [食材3] [用量]\n- ...\n\n**烹饪步骤：**\n1. [第一步详细描述]\n2. [第二步详细描述]\n3. [第三步详细描述]\n4. [第四步详细描述]\n\n要求：\n- 准确识别菜品名称和主要食材\n- 食材用量用公制单位（克、毫升、汤匙、茶匙、个）\n- 烹饪步骤3-8条，与图片菜品完全匹配\n- 用家庭厨具与常见食材表达，语气简洁\n- 强调关键火候与时长\n- 确保步骤能做出图片中相同的菜品\n\n\n\n\n"
+        }
+      ]
+    }
+  ]
+}
+Doubao API响应状态: undefined undefined
+Doubao API调用失败: TypeError: Cannot read properties of undefined (reading 'entries')
+    at generateRecipeSteps (file:///Users/celeste/Documents/04%20AIGC/coding/cook/backend/src/providers/doubao.js:61:56)
+    at async processJob (file:///Users/celeste/Documents/04%20AIGC/coding/cook/backend/src/index.js:139:19)
+错误详情: Cannot read properties of undefined (reading 'entries')
+错误堆栈: TypeError: Cannot read properties of undefined (reading 'entries')
+    at generateRecipeSteps (file:///Users/celeste/Documents/04%20AIGC/coding/cook/backend/src/providers/doubao.js:61:56)
+    at async processJob (file:///Users/celeste/Documents/04%20AIGC/coding/cook/backend/src/index.js:139:19)
+图片文件名: in_1758435447227_es17y9jnlfe.jpeg
+解析的菜谱信息: {
+  dishName: '红烧排骨',
+  ingredients: [
+    { name: '排骨 500克', amount: '', preparation: '' },
+    { name: '冰糖 30克', amount: '', preparation: '' },
+    { name: '生抽 2汤匙', amount: '', preparation: '' },
+    { name: '老抽 1汤匙', amount: '', preparation: '' },
+    { name: '料酒 1汤匙', amount: '', preparation: '' },
+    { name: '葱姜蒜 适量', amount: '', preparation: '' },
+    { name: '八角 2个', amount: '', preparation: '' },
+    { name: '桂皮 1块', amount: '', preparation: '' }
+  ],
+  steps: [
+    '排骨洗净切段，冷水下锅焯水，加入料酒和姜片去腥，煮沸后撇去浮沫，捞出备用。',
+    '热锅冷油，放入冰糖小火炒至焦糖色，加入排骨翻炒上色。',
+    '加入葱姜蒜爆香，然后加入生抽、老抽翻炒均匀，倒入热水没过排骨。',
+    '加入八角、桂皮，中小火炖煮40分钟至排骨软烂，大火收汁即可。'
+  ]
+}
+最终菜谱数据: {
+  ingredients: [
+    { name: '排骨 500克', amount: '', preparation: '' },
+    { name: '冰糖 30克', amount: '', preparation: '' },
+    { name: '生抽 2汤匙', amount: '', preparation: '' },
+    { name: '老抽 1汤匙', amount: '', preparation: '' },
+    { name: '料酒 1汤匙', amount: '', preparation: '' },
+    { name: '葱姜蒜 适量', amount: '', preparation: '' },
+    { name: '八角 2个', amount: '', preparation: '' },
+    { name: '桂皮 1块', amount: '', preparation: '' }
+  ],
+  steps: [
+    '排骨洗净切段，冷水下锅焯水，加入料酒和姜片去腥，煮沸后撇去浮沫，捞出备用。',
+    '热锅冷油，放入冰糖小火炒至焦糖色，加入排骨翻炒上色。',
+    '加入葱姜蒜爆香，然后加入生抽、老抽翻炒均匀，倒入热水没过排骨。',
+    '加入八角、桂皮，中小火炖煮40分钟至排骨软烂，大火收汁即可。'
+  ],
+  locale: 'zh-CN',
+  name: '红烧排骨'
+}
+{"level":30,"time":1758435447229,"pid":11109,"hostname":"celestes-MacBook-Pro.local","reqId":"req-2","res":{"statusCode":201},"responseTime":3.519708000123501,"msg":"request completed"}
+{"level":30,"time":1758435453970,"pid":11109,"hostname":"celestes-MacBook-Pro.local","reqId":"req-3","req":{"method":"GET","url":"/jobs/job_vQoo_H6C","hostname":"localhost:8787","remoteAddress":"127.0.0.1","remotePort":55529},"msg":"incoming request"}
+{"level":30,"time":1758435453971,"pid":11109,"hostname":"celestes-MacBook-Pro.local","reqId":"req-3","res":{"statusCode":200},"responseTime":0.9196250000968575,"msg":"request completed"}
+{"level":30,"time":1758435472975,"pid":11109,"hostname":"celestes-MacBook-Pro.local","reqId":"req-4","req":{"method":"POST","url":"/jobs","hostname":"localhost:8787","remoteAddress":"127.0.0.1","remotePort":55576},"msg":"incoming request"}
+Doubao API调用参数: {
+  imageUrl: 'http://localhost:8787/uploads/in_1758435472976_6ibwrwu0yx7.webp',
+  model: 'ep-20250921085349-k25sf',
+  apiKey: '已设置'
+}
+API密钥值: 3dafef81-fdc1-4148-bb39-87c396f94c2a
+发送API请求到: https://ark.cn-beijing.volces.com/api/v3/chat/completions
+请求体: {
+  "model": "ep-20250921085349-k25sf",
+  "temperature": 0.3,
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "image_url",
+          "image_url": {
+            "url": "http://localhost:8787/uploads/in_1758435472976_6ibwrwu0yx7.webp"
+          }
+        },
+        {
+          "type": "text",
+          "text": "你是一名专业中餐厨师与美食编辑。请仔细观察图片中的成品菜，按以下格式输出完整信息：\n\n**菜品名称：** [识别出的菜品名称]\n\n**主要食材：**\n- [食材1] [用量]\n- [食材2] [用量]\n- [食材3] [用量]\n- ...\n\n**烹饪步骤：**\n1. [第一步详细描述]\n2. [第二步详细描述]\n3. [第三步详细描述]\n4. [第四步详细描述]\n\n要求：\n- 准确识别菜品名称和主要食材\n- 食材用量用公制单位（克、毫升、汤匙、茶匙、个）\n- 烹饪步骤3-8条，与图片菜品完全匹配\n- 用家庭厨具与常见食材表达，语气简洁\n- 强调关键火候与时长\n- 确保步骤能做出图片中相同的菜品\n\n\n\n\n"
+        }
+      ]
+    }
+  ]
+}
+Doubao API响应状态: undefined undefined
+Doubao API调用失败: TypeError: Cannot read properties of undefined (reading 'entries')
+    at generateRecipeSteps (file:///Users/celeste/Documents/04%20AIGC/coding/cook/backend/src/providers/doubao.js:61:56)
+    at async processJob (file:///Users/celeste/Documents/04%20AIGC/coding/cook/backend/src/index.js:139:19)
+错误详情: Cannot read properties of undefined (reading 'entries')
+错误堆栈: TypeError: Cannot read properties of undefined (reading 'entries')
+    at generateRecipeSteps (file:///Users/celeste/Documents/04%20AIGC/coding/cook/backend/src/providers/doubao.js:61:56)
+    at async processJob (file:///Users/celeste/Documents/04%20AIGC/coding/cook/backend/src/index.js:139:19)
+图片文件名: in_1758435472976_6ibwrwu0yx7.webp
+解析的菜谱信息: {
+  dishName: '识别菜品',
+  ingredients: [
+    { name: '请根据图片中的食材手动添加', amount: '', preparation: '' },
+    { name: '建议包含主要蛋白质、蔬菜、调料等', amount: '', preparation: '' }
+  ],
+  steps: [
+    '请根据图片中的菜品特点，描述具体的制作步骤',
+    '注意火候控制和调味技巧',
+    '确保步骤与图片中的成品相符',
+    '可以添加个人经验和技巧'
+  ]
+}
+最终菜谱数据: {
+  ingredients: [
+    { name: '请根据图片中的食材手动添加', amount: '', preparation: '' },
+    { name: '建议包含主要蛋白质、蔬菜、调料等', amount: '', preparation: '' }
+  ],
+  steps: [
+    '请根据图片中的菜品特点，描述具体的制作步骤',
+    '注意火候控制和调味技巧',
+    '确保步骤与图片中的成品相符',
+    '可以添加个人经验和技巧'
+  ],
+  locale: 'zh-CN',
+  name: '识别菜品'
+}
+{"level":30,"time":1758435472980,"pid":11109,"hostname":"celestes-MacBook-Pro.local","reqId":"req-4","res":{"statusCode":201},"responseTime":4.992666999809444,"msg":"request completed"}
+{"level":30,"time":1758435472982,"pid":11109,"hostname":"celestes-MacBook-Pro.local","reqId":"req-5","req":{"method":"GET","url":"/jobs/job_Jc4uk0bj","hostname":"localhost:8787","remoteAddress":"127.0.0.1","remotePort":55576},"msg":"incoming request"}
+{"level":30,"time":1758435472982,"pid":11109,"hostname":"celestes-MacBook-Pro.local","reqId":"req-5","res":{"statusCode":200},"responseTime":0.4683330000843853,"msg":"request completed"}
+{"level":30,"time":1758435472988,"pid":11109,"hostname":"celestes-MacBook-Pro.local","reqId":"req-6","req":{"method":"GET","url":"/uploads/in_1758435472976_6ibwrwu0yx7.webp","hostname":"localhost:8787","remoteAddress":"127.0.0.1","remotePort":55578},"msg":"incoming request"}
+{"level":30,"time":1758435472993,"pid":11109,"hostname":"celestes-MacBook-Pro.local","reqId":"req-6","res":{"statusCode":200},"responseTime":4.357749999966472,"msg":"request completed"}
+{"level":30,"time":1758435551868,"pid":11109,"hostname":"celestes-MacBook-Pro.local","reqId":"req-7","req":{"method":"POST","url":"/jobs","hostname":"localhost:8787","remoteAddress":"127.0.0.1","remotePort":56009},"msg":"incoming request"}
+Doubao API调用参数: {
+  imageUrl: 'http://localhost:8787/uploads/in_1758435551870_eyz09lhp43b.jpg',
+  model: 'ep-20250921085349-k25sf',
+  apiKey: '已设置'
+}
+API密钥值: 3dafef81-fdc1-4148-bb39-87c396f94c2a
+发送API请求到: https://ark.cn-beijing.volces.com/api/v3/chat/completions
+请求体: {
+  "model": "ep-20250921085349-k25sf",
+  "temperature": 0.3,
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "image_url",
+          "image_url": {
+            "url": "http://localhost:8787/uploads/in_1758435551870_eyz09lhp43b.jpg"
+          }
+        },
+        {
+          "type": "text",
+          "text": "你是一名专业中餐厨师与美食编辑。请仔细观察图片中的成品菜，按以下格式输出完整信息：\n\n**菜品名称：** [识别出的菜品名称]\n\n**主要食材：**\n- [食材1] [用量]\n- [食材2] [用量]\n- [食材3] [用量]\n- ...\n\n**烹饪步骤：**\n1. [第一步详细描述]\n2. [第二步详细描述]\n3. [第三步详细描述]\n4. [第四步详细描述]\n\n要求：\n- 准确识别菜品名称和主要食材\n- 食材用量用公制单位（克、毫升、汤匙、茶匙、个）\n- 烹饪步骤3-8条，与图片菜品完全匹配\n- 用家庭厨具与常见食材表达，语气简洁\n- 强调关键火候与时长\n- 确保步骤能做出图片中相同的菜品\n\n\n\n\n"
+        }
+      ]
+    }
+  ]
+}
+Doubao API响应状态: undefined undefined
+Doubao API调用失败: TypeError: Cannot read properties of undefined (reading 'entries')
+    at generateRecipeSteps (file:///Users/celeste/Documents/04%20AIGC/coding/cook/backend/src/providers/doubao.js:61:56)
+    at async processJob (file:///Users/celeste/Documents/04%20AIGC/coding/cook/backend/src/index.js:139:19)
+错误详情: Cannot read properties of undefined (reading 'entries')
+错误堆栈: TypeError: Cannot read properties of undefined (reading 'entries')
+    at generateRecipeSteps (file:///Users/celeste/Documents/04%20AIGC/coding/cook/backend/src/providers/doubao.js:61:56)
+    at async processJob (file:///Users/celeste/Documents/04%20AIGC/coding/cook/backend/src/index.js:139:19)
+图片文件名: in_1758435551870_eyz09lhp43b.jpg
+解析的菜谱信息: {
+  dishName: '识别菜品',
+  ingredients: [
+    { name: '请根据图片中的食材手动添加', amount: '', preparation: '' },
+    { name: '建议包含主要蛋白质、蔬菜、调料等', amount: '', preparation: '' }
+  ],
+  steps: [
+    '请根据图片中的菜品特点，描述具体的制作步骤',
+    '注意火候控制和调味技巧',
+    '确保步骤与图片中的成品相符',
+    '可以添加个人经验和技巧'
+  ]
+}
+最终菜谱数据: {
+  ingredients: [
+    { name: '请根据图片中的食材手动添加', amount: '', preparation: '' },
+    { name: '建议包含主要蛋白质、蔬菜、调料等', amount: '', preparation: '' }
+  ],
+  steps: [
+    '请根据图片中的菜品特点，描述具体的制作步骤',
+    '注意火候控制和调味技巧',
+    '确保步骤与图片中的成品相符',
+    '可以添加个人经验和技巧'
+  ],
+  locale: 'zh-CN',
+  name: '识别菜品'
+}
+{"level":30,"time":1758435551880,"pid":11109,"hostname":"celestes-MacBook-Pro.local","reqId":"req-7","res":{"statusCode":201},"responseTime":11.41412499989383,"msg":"request completed"}
+{"level":30,"time":1758435551889,"pid":11109,"hostname":"celestes-MacBook-Pro.local","reqId":"req-8","req":{"method":"GET","url":"/jobs/job_8kbF6j2x","hostname":"localhost:8787","remoteAddress":"127.0.0.1","remotePort":56009},"msg":"incoming request"}
+{"level":30,"time":1758435551890,"pid":11109,"hostname":"celestes-MacBook-Pro.local","reqId":"req-8","res":{"statusCode":200},"responseTime":0.4984999999869615,"msg":"request completed"}
+{"level":30,"time":1758435551915,"pid":11109,"hostname":"celestes-MacBook-Pro.local","reqId":"req-9","req":{"method":"GET","url":"/uploads/in_1758435551870_eyz09lhp43b.jpg","hostname":"localhost:8787","remoteAddress":"127.0.0.1","remotePort":56011},"msg":"incoming request"}
+{"level":30,"time":1758435551922,"pid":11109,"hostname":"celestes-MacBook-Pro.local","reqId":"req-9","res":{"statusCode":200},"responseTime":6.526500000152737,"msg":"request completed"}
+{"level":30,"time":1758435700185,"pid":11109,"hostname":"celestes-MacBook-Pro.local","reqId":"req-a","req":{"method":"POST","url":"/jobs","hostname":"localhost:8787","remoteAddress":"127.0.0.1","remotePort":56324},"msg":"incoming request"}

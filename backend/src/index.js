@@ -126,40 +126,38 @@ function parseRecipeInfo(text) {
 }
 
 async function processJob(jobId) {
+  console.log('🚀 开始处理任务:', jobId);
   const job = jobs.get(jobId);
-  if (!job) return;
+  if (!job) {
+    console.log('❌ 任务不存在:', jobId);
+    return;
+  }
   job.status = 'running';
+  console.log('📋 任务状态更新为running');
   try {
     // Step 1: Doubao for steps (try uploaded image first, fallback to base64)
     let imageUrl = job.inputImageUrl;
     let stepsText;
     
-    try {
-      // First try with the uploaded image URL
+    // Convert image to base64 format for API call
+    console.log('🔄 开始处理图片，转换为base64格式...');
+    const imagePath = path.join(uploadsDir, path.basename(imageUrl));
+    console.log('图片路径:', imagePath);
+    if (fs.existsSync(imagePath)) {
+      const imageBuffer = await fs.promises.readFile(imagePath);
+      const base64 = imageBuffer.toString('base64');
+      const mimeType = imagePath.endsWith('.png') ? 'image/png' : 'image/jpeg';
+      const dataUrl = `data:${mimeType};base64,${base64}`;
+      console.log('✅ 图片已转换为base64，大小:', imageBuffer.length, 'bytes');
+      console.log('📤 调用Doubao API...');
+      
       stepsText = await generateRecipeSteps({
-        imageUrl: imageUrl,
+        imageUrl: dataUrl,
         prompt: buildStepsPrompt()
       });
-    } catch (urlError) {
-      // If URL fails, try converting to base64 and using data URL
-      try {
-        const imagePath = path.join(uploadsDir, path.basename(imageUrl));
-        if (fs.existsSync(imagePath)) {
-          const imageBuffer = await fs.promises.readFile(imagePath);
-          const base64 = imageBuffer.toString('base64');
-          const mimeType = imagePath.endsWith('.png') ? 'image/png' : 'image/jpeg';
-          const dataUrl = `data:${mimeType};base64,${base64}`;
-          
-          stepsText = await generateRecipeSteps({
-            imageUrl: dataUrl,
-            prompt: buildStepsPrompt()
-          });
-        } else {
-          throw new Error('Image file not found');
-        }
-      } catch (base64Error) {
-        throw new Error(`Failed to process image: ${urlError.message} | ${base64Error.message}`);
-      }
+      console.log('✅ Doubao API调用成功，返回结果长度:', stepsText.length);
+    } else {
+      throw new Error('Image file not found');
     }
     // 解析AI返回的完整信息
     const parsedInfo = parseRecipeInfo(stepsText);

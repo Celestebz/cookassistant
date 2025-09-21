@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>简单测试</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://code.iconify.design/3/3.1.1/iconify.min.js"></script>
+</head>
+<body class="bg-gray-50">
+    <div class="container mx-auto p-8">
+        <h1 class="text-3xl font-bold mb-8">简单测试</h1>
+        
+        <button id="testBtn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 mb-6">
+            测试显示
+        </button>
+        
+        <div id="resultsSection" class="hidden">
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h2 id="recipeTitle" class="text-2xl font-bold mb-4">推荐菜谱</h2>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-green-50 p-4 rounded-lg">
+                        <h3 class="font-semibold mb-3">食材清单</h3>
+                        <div id="ingredientsList" class="space-y-2">
+                            <!-- 动态生成的食材列表 -->
+                        </div>
+                    </div>
+                    
+                    <div class="bg-orange-50 p-4 rounded-lg">
+                        <h3 class="font-semibold mb-3">烹饪步骤</h3>
+                        <div id="recipeSteps" class="space-y-3">
+                            <!-- 动态生成的菜谱步骤 -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function el(id) {
+            return document.getElementById(id);
+        }
+
+        function showResults() {
+            console.log('开始显示结果区域...');
+            const resultsEl = el('resultsSection');
+            if (resultsEl) {
+                console.log('找到resultsSection元素');
+                console.log('当前类列表:', resultsEl.classList.toString());
+                
+                resultsEl.classList.remove('hidden');
+                resultsEl.style.display = 'block';
+                resultsEl.style.visibility = 'visible';
+                resultsEl.style.opacity = '1';
+                
+                console.log('结果显示区域已显示');
+                console.log('更新后类列表:', resultsEl.classList.toString());
+            } else {
+                console.error('找不到resultsSection元素');
+            }
+        }
+
+        function displayIngredients(ingredients) {
+            const container = el('ingredientsList');
+            if (!container) {
+                console.error('找不到ingredientsList容器');
+                return;
+            }
+            
+            console.log('开始显示食材清单:', ingredients);
+            container.innerHTML = '';
+            
+            if (!ingredients || ingredients.length === 0) {
+                container.innerHTML = '<div class="text-center text-gray-500 py-4">暂无食材信息</div>';
+                return;
+            }
+
+            ingredients.forEach(ingredient => {
+                const item = document.createElement('div');
+                item.className = 'flex items-center p-2 bg-white rounded border-l-4 border-green-400';
+                item.innerHTML = `
+                    <div class="flex-shrink-0 w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center mr-3">
+                        <iconify-icon icon="mdi:food" class="text-xs"></iconify-icon>
+                    </div>
+                    <div class="flex-1">
+                        <div class="font-medium text-gray-800">${ingredient.name}</div>
+                        ${ingredient.amount ? `<div class="text-sm text-gray-600">用量: ${ingredient.amount}</div>` : ''}
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function displaySteps(steps) {
+            const container = el('recipeSteps');
+            if (!container) {
+                console.error('找不到recipeSteps容器');
+                return;
+            }
+            
+            console.log('开始显示烹饪步骤:', steps);
+            container.innerHTML = '';
+            
+            if (!steps || steps.length === 0) {
+                container.innerHTML = '<div class="text-center text-gray-500 py-4">暂无步骤信息</div>';
+                return;
+            }
+
+            steps.forEach((step, index) => {
+                const stepEl = document.createElement('div');
+                stepEl.className = 'flex items-start p-3 bg-white rounded border-l-4 border-orange-400';
+                stepEl.innerHTML = `
+                    <div class="flex-shrink-0 w-6 h-6 bg-orange-500 text-white rounded-full flex items-center justify-center font-bold text-xs mr-3">
+                        ${index + 1}
+                    </div>
+                    <div class="flex-1 text-gray-700 text-sm">${step}</div>
+                `;
+                container.appendChild(stepEl);
+            });
+        }
+
+        document.getElementById('testBtn').addEventListener('click', function() {
+            console.log('开始测试...');
+            
+            const testData = {
+                recipe: {
+                    name: "红烧排骨",
+                    ingredients: [
+                        {name: "排骨 500克", amount: ""},
+                        {name: "冰糖 30克", amount: ""},
+                        {name: "生抽 2汤匙", amount: ""}
+                    ],
+                    steps: [
+                        "排骨洗净切段，冷水下锅焯水，加入料酒和姜片去腥，煮沸后撇去浮沫，捞出备用。",
+                        "热锅冷油，放入冰糖小火炒至焦糖色，加入排骨翻炒上色。"
+                    ]
+                }
+            };
+            
+            // 显示菜品名称
+            if (testData.recipe.name) {
+                el('recipeTitle').textContent = testData.recipe.name;
+                console.log('菜品名称已设置:', testData.recipe.name);
+            }
+            
+            // 显示食材清单
+            if (testData.recipe.ingredients?.length) {
+                displayIngredients(testData.recipe.ingredients);
+            }
+            
+            // 显示烹饪步骤
+            if (testData.recipe.steps?.length) {
+                displaySteps(testData.recipe.steps);
+            }
+            
+            // 显示结果区域
+            showResults();
+            
+            console.log('测试完成！');
+        });
+    </script>
+</body>
+</html>
+
