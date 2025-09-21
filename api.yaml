@@ -1,0 +1,115 @@
+openapi: 3.1.0
+info:
+  title: Cook MVP API
+  version: 0.1.0
+  description: |
+    MVP endpoints for job-based generation of recipe text and ingredient flatlay image.
+servers:
+  - url: https://api.example.com
+paths:
+  /jobs:
+    post:
+      summary: Create a generation job
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+                background:
+                  type: string
+                  enum: [wood]
+                  default: wood
+              required: [image]
+      responses:
+        '201':
+          description: Job created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+  /jobs/{id}:
+    get:
+      summary: Get job status and result
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Job detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobDetail'
+  /feedback:
+    post:
+      summary: Submit feedback for a job
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Feedback'
+      responses:
+        '204':
+          description: Accepted
+components:
+  schemas:
+    Ingredient:
+      type: object
+      properties:
+        name: { type: string }
+        quantityText: { type: string }
+        confidence: { type: number, minimum: 0, maximum: 1 }
+      required: [name, quantityText]
+    Recipe:
+      type: object
+      properties:
+        ingredients:
+          type: array
+          items: { $ref: '#/components/schemas/Ingredient' }
+        steps:
+          type: array
+          items: { type: string }
+        locale:
+          type: string
+          enum: [zh-CN]
+      required: [ingredients, steps, locale]
+    Job:
+      type: object
+      properties:
+        id: { type: string }
+        status:
+          type: string
+          enum: [queued, running, succeeded, failed, partial]
+        createdAt: { type: string, format: date-time }
+      required: [id, status]
+    JobDetail:
+      allOf:
+        - $ref: '#/components/schemas/Job'
+        - type: object
+          properties:
+            inputImageUrl: { type: string, format: uri }
+            recipe: { $ref: '#/components/schemas/Recipe' }
+            ingredientFlatlayUrl: { type: string, format: uri }
+            error:
+              type: object
+              properties:
+                code: { type: string }
+                message: { type: string }
+    Feedback:
+      type: object
+      properties:
+        jobId: { type: string }
+        rating: { type: string, enum: [up, down] }
+        note: { type: string }
+      required: [jobId, rating]
+
+

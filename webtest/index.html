@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Cook MVP 本地测试</title>
+    <style>
+      body { font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin: 24px; color: #111; }
+      .card { max-width: 960px; margin: 0 auto; border: 1px solid #eee; border-radius: 10px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+      .row { display: flex; gap: 24px; }
+      .col { flex: 1; min-width: 0; }
+      button { padding: 10px 14px; border-radius: 8px; border: 1px solid #ddd; background: #111; color: #fff; cursor: pointer; }
+      button.secondary { background: #fff; color: #111; }
+      #preview { max-width: 100%; border: 1px solid #eee; border-radius: 8px; }
+      #flatlay { max-width: 100%; border: 1px solid #eee; border-radius: 8px; }
+      textarea, input[type="text"] { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; min-height: 120px; }
+      .muted { color: #666; font-size: 12px; }
+      .chips { display:flex; gap:8px; flex-wrap:wrap; margin: 8px 0; }
+      .chip { font-size: 12px; padding: 4px 8px; border:1px solid #ddd; border-radius:999px; }
+      .actions { display:flex; gap:8px; flex-wrap:wrap; }
+      .hidden { display:none; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h2>Cook MVP 本地测试</h2>
+      <p class="muted">后端默认 http://localhost:8787 · 木质案板 · 中文/公制 · 2048px</p>
+
+      <div>
+        <input id="file" type="file" accept="image/*" />
+        <button id="btnUpload">上传并生成</button>
+        <span id="status" class="muted"></span>
+        <div id="error" class="muted" style="color:#b00020;margin-top:6px;"></div>
+      </div>
+
+      <div class="chips" id="chips"></div>
+
+      <div class="row" style="margin-top:16px;">
+        <div class="col">
+          <h3>源图预览</h3>
+          <img id="preview" src="" alt="preview" class="hidden" />
+        </div>
+        <div class="col">
+          <h3>生成的食材平铺图</h3>
+          <img id="flatlay" src="" alt="flatlay" class="hidden" />
+        </div>
+      </div>
+
+      <div style="margin-top:16px;">
+        <h3>中文烹饪步骤（自动生成）</h3>
+        <textarea id="steps" placeholder="生成后显示…" readonly></textarea>
+        <p class="muted">说明：AI 生成内容仅供参考，注意食材过敏</p>
+      </div>
+
+      <div class="actions" style="margin-top:12px;">
+        <button id="btnCopySteps" class="secondary">复制步骤</button>
+        <button id="btnFeedbackUp" class="secondary">准确</button>
+        <button id="btnFeedbackDown" class="secondary">不准</button>
+      </div>
+    </div>
+
+    <script>
+      const API = (path) => `http://localhost:8787${path}`;
+      const el = (id) => document.getElementById(id);
+      let currentJobId = null;
+
+      function setStatus(t) { el('status').textContent = t || ''; }
+      function setError(t) { el('error').textContent = t || ''; }
+      function addChip(text) {
+        const c = document.createElement('span');
+        c.className = 'chip'; c.textContent = text; el('chips').appendChild(c);
+      }
+      function clearChips() { el('chips').innerHTML = ''; }
+
+      async function createJob(file) {
+        const fd = new FormData();
+        fd.append('image', file);
+        const res = await fetch(API('/jobs'), { method: 'POST', body: fd });
+        if (!res.ok) throw new Error('创建作业失败');
+        return res.json();
+      }
+      async function getJob(id) {
+        const res = await fetch(API(`/jobs/${id}`));
+        if (!res.ok) throw new Error('查询作业失败');
+        return res.json();
+      }
+      async function postFeedback(id, rating) {
+        await fetch(API('/feedback'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jobId: id, rating }) });
+      }
+
+      async function pollJob(id) {
+        clearChips();
+        addChip('queued');
+        let tries = 0;
+        while (tries < 60) { // 最多轮询约60次
+          tries++;
+          const j = await getJob(id);
+          clearChips();
+          addChip(j.status);
+          if (j.inputImageUrl) {
+            el('preview').src = j.inputImageUrl; el('preview').classList.remove('hidden');
+          }
+          if (j.recipe?.steps?.length) {
+            el('steps').value = j.recipe.steps.map((s, i) => `${i+1}. ${s}`).join('\n');
+          }
+          if (j.ingredientFlatlayUrl) {
+            el('flatlay').src = j.ingredientFlatlayUrl; el('flatlay').classList.remove('hidden');
+          }
+          if (j.error?.message) setError(j.error.message);
+          if (j.status === 'succeeded' || j.status === 'partial' || j.status === 'failed') return j;
+          await new Promise(r => setTimeout(r, 1000));
+        }
+        throw new Error('轮询超时');
+      }
+
+      el('btnUpload').addEventListener('click', async () => {
+        const f = el('file').files?.[0];
+        if (!f) { alert('请选择图片'); return; }
+        try {
+          setStatus('创建作业...');
+          el('steps').value = '';
+          el('flatlay').classList.add('hidden');
+          const { id } = await createJob(f);
+          currentJobId = id;
+          setStatus(`作业已创建：${id}，开始生成...`);
+          await pollJob(id);
+          setStatus('生成完成');
+        } catch (e) {
+          console.error(e);
+          setStatus('出错');
+          setError(String(e?.message || e));
+        }
+      });
+
+      el('btnCopySteps').addEventListener('click', async () => {
+        const t = el('steps').value;
+        if (!t) return;
+        await navigator.clipboard.writeText(t);
+        setStatus('已复制');
+      });
+
+      el('btnFeedbackUp').addEventListener('click', async () => {
+        if (!currentJobId) return;
+        await postFeedback(currentJobId, 'up');
+        setStatus('已提交：准确');
+      });
+      el('btnFeedbackDown').addEventListener('click', async () => {
+        if (!currentJobId) return;
+        await postFeedback(currentJobId, 'down');
+        setStatus('已提交：不准');
+      });
+    </script>
+  </body>
+  </html>
+
+
