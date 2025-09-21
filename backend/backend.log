@@ -1,0 +1,44 @@
+{"level":30,"time":1758430878405,"pid":32137,"hostname":"celestes-MacBook-Pro.local","msg":"Server listening at http://0.0.0.0:8787"}
+{"level":30,"time":1758430878406,"pid":32137,"hostname":"celestes-MacBook-Pro.local","msg":"API listening on http://localhost:8787"}
+{"level":30,"time":1758430884177,"pid":32137,"hostname":"celestes-MacBook-Pro.local","reqId":"req-1","req":{"method":"POST","url":"/jobs","hostname":"localhost:8787","remoteAddress":"127.0.0.1","remotePort":60469},"msg":"incoming request"}
+Doubao API调用参数: {
+  imageUrl: 'http://localhost:8787/uploads/in_1758430884182_om35gi1qtv.jpeg',
+  model: 'ep-20250921085349-k25sf',
+  apiKey: '已设置'
+}
+API密钥值: 3dafef81-fdc1-4148-bb39-87c396f94c2a
+Doubao API响应状态: undefined undefined
+Doubao API错误响应: Status: undefined undefined
+Doubao API调用失败: Error: Doubao error undefined: Status: undefined undefined
+    at generateRecipeSteps (file:///Users/celeste/Documents/04%20AIGC/coding/cook/backend/src/providers/doubao.js:70:13)
+    at async processJob (file:///Users/celeste/Documents/04%20AIGC/coding/cook/backend/src/index.js:139:19)
+解析的菜谱信息: {
+  dishName: '识别菜品',
+  ingredients: [
+    { name: '请根据图片中的食材手动添加', amount: '', preparation: '' },
+    { name: '建议包含主要蛋白质、蔬菜、调料等', amount: '', preparation: '' }
+  ],
+  steps: [
+    '请根据图片中的菜品特点，描述具体的制作步骤',
+    '注意火候控制和调味技巧',
+    '确保步骤与图片中的成品相符',
+    '可以添加个人经验和技巧'
+  ]
+}
+最终菜谱数据: {
+  ingredients: [
+    { name: '请根据图片中的食材手动添加', amount: '', preparation: '' },
+    { name: '建议包含主要蛋白质、蔬菜、调料等', amount: '', preparation: '' }
+  ],
+  steps: [
+    '请根据图片中的菜品特点，描述具体的制作步骤',
+    '注意火候控制和调味技巧',
+    '确保步骤与图片中的成品相符',
+    '可以添加个人经验和技巧'
+  ],
+  locale: 'zh-CN',
+  name: '识别菜品'
+}
+{"level":30,"time":1758430884192,"pid":32137,"hostname":"celestes-MacBook-Pro.local","reqId":"req-1","res":{"statusCode":201},"responseTime":15.270415999926627,"msg":"request completed"}
+{"level":30,"time":1758430889577,"pid":32137,"hostname":"celestes-MacBook-Pro.local","reqId":"req-2","req":{"method":"GET","url":"/jobs/job_unfHwWfX","hostname":"localhost:8787","remoteAddress":"127.0.0.1","remotePort":60475},"msg":"incoming request"}
+{"level":30,"time":1758430889578,"pid":32137,"hostname":"celestes-MacBook-Pro.local","reqId":"req-2","res":{"statusCode":200},"responseTime":0.6455000001005828,"msg":"request completed"}
