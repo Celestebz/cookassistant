@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>智能菜谱助手 - 带认证功能</title>
+    <title>智能菜谱助手 - 简化认证</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/iconify-icon@1.0.7/dist/iconify-icon.min.js"></script>
     <style>
@@ -244,6 +244,50 @@
             border-radius: 6px;
             margin: 1rem 0;
             text-align: center;
+        }
+
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 400px;
+        }
+
+        .modal-content h2 {
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .modal-content input {
+            width: 100%;
+            padding: 0.75rem;
+            margin-bottom: 1rem;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+        }
+
+        .modal-content button {
+            width: 100%;
+            padding: 0.75rem;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
         }
     </style>
 </head>
@@ -683,46 +727,51 @@
             }, 3000)
         }
 
-        // 登录处理
+        // 简化的登录处理 - 使用后端API
         async function handleLogin(event) {
             event.preventDefault()
             const username = document.getElementById('loginUsername').value
             const password = document.getElementById('loginPassword').value
 
-            if (!supabaseClient) {
-                showError('系统初始化失败，请刷新页面重试')
-                return
-            }
-
             try {
-                // 使用用户名作为邮箱，添加固定域名
-                const email = `${username}@cookapp.local`
-                const { data, error } = await supabaseClient.auth.signInWithPassword({
-                    email: email,
-                    password: password
+                // 直接调用后端登录API
+                const response = await fetch('http://localhost:8787/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        username: username,
+                        password: password
+                    })
                 })
 
-                if (error) {
-                    // 如果是邮箱未确认错误，尝试自动确认
-                    if (error.message.includes('Email not confirmed')) {
-                        showError('登录失败：请先注册账户')
-                        return
-                    }
-                    showError('登录失败：' + error.message)
+                if (!response.ok) {
+                    const errorData = await response.json()
+                    showError('登录失败：' + (errorData.error || '用户名或密码错误'))
                     return
                 }
 
-                currentUser = data.user
-                await loadUserData()
+                const data = await response.json()
+                
+                // 使用返回的token直接设置用户状态
+                currentUser = { id: data.userId, username: data.username }
+                userPoints = data.points
+                
+                // 更新UI
+                document.getElementById('user-points').textContent = userPoints
+                document.getElementById('user-username').textContent = data.username
                 showUserInterface()
                 showSuccess('登录成功！')
                 hideModal('loginModal')
+                
             } catch (error) {
+                console.error('登录失败:', error)
                 showError('登录失败，请重试')
             }
         }
 
-        // 注册处理
+        // 简化的注册处理 - 使用后端API
         async function handleRegister(event) {
             event.preventDefault()
             const username = document.getElementById('registerUsername').value
@@ -734,63 +783,59 @@
                 return
             }
 
-            if (!supabaseClient) {
-                showError('系统初始化失败，请刷新页面重试')
-                return
-            }
-
             try {
-                // 使用用户名作为邮箱，添加固定域名
-                const email = `${username}@cookapp.local`
-                const { data, error } = await supabaseClient.auth.signUp({
-                    email: email,
-                    password: password,
-                    options: {
-                        data: { username: username },
-                        emailRedirectTo: undefined // 禁用邮箱重定向
-                    }
+                // 直接调用后端注册API
+                const response = await fetch('http://localhost:8787/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        username: username,
+                        password: password
+                    })
                 })
 
-                if (error) {
-                    showError('注册失败：' + error.message)
+                if (!response.ok) {
+                    const errorData = await response.json()
+                    showError('注册失败：' + (errorData.error || '用户名已存在'))
                     return
                 }
 
-                // 检查是否需要邮箱确认
-                if (data.user && !data.user.email_confirmed_at) {
-                    // 如果用户已创建但邮箱未确认，直接登录
-                    currentUser = data.user
-                    await loadUserData()
-                    showUserInterface()
-                    showSuccess('注册成功！您获得了100积分奖励！')
-                    hideModal('registerModal')
-                } else {
-                    showError('注册失败，请重试')
-                }
+                const data = await response.json()
+                
+                // 使用返回的数据直接设置用户状态
+                currentUser = { id: data.userId, username: data.username }
+                userPoints = data.points
+                
+                // 更新UI
+                document.getElementById('user-points').textContent = userPoints
+                document.getElementById('user-username').textContent = data.username
+                showUserInterface()
+                showSuccess('注册成功！您获得了100积分奖励！')
+                hideModal('registerModal')
+                
             } catch (error) {
+                console.error('注册失败:', error)
                 showError('注册失败，请重试')
             }
         }
 
         // 退出登录
         async function logout() {
-            if (!supabaseClient) {
-                currentUser = null
-                userPoints = 0
-                showAuthInterface()
-                showSuccess('已退出登录')
-                return
-            }
-            
             try {
-                await supabaseClient.auth.signOut()
-                currentUser = null
-                userPoints = 0
-                showAuthInterface()
-                showSuccess('已退出登录')
+                // 调用后端退出API
+                await fetch('http://localhost:8787/auth/logout', {
+                    method: 'POST'
+                })
             } catch (error) {
                 console.error('退出登录失败:', error)
             }
+            
+            currentUser = null
+            userPoints = 0
+            showAuthInterface()
+            showSuccess('已退出登录')
         }
 
         // 显示登录模态框
@@ -813,51 +858,5 @@
             document.getElementById(modalId).classList.add('hidden')
         }
     </script>
-
-    <style>
-        .modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.5);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-        }
-
-        .modal-content {
-            background: white;
-            padding: 2rem;
-            border-radius: 15px;
-            width: 90%;
-            max-width: 400px;
-        }
-
-        .modal-content h2 {
-            margin-bottom: 1rem;
-            text-align: center;
-        }
-
-        .modal-content input {
-            width: 100%;
-            padding: 0.75rem;
-            margin-bottom: 1rem;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-        }
-
-        .modal-content button {
-            width: 100%;
-            padding: 0.75rem;
-            background: #667eea;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-        }
-    </style>
 </body>
 </html>

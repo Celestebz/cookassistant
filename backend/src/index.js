@@ -17,6 +17,17 @@ import {
   checkUserPoints 
 } from './auth.js';
 
+// 导入Supabase客户端
+import { createClient } from '@supabase/supabase-js';
+
+// Supabase配置
+const supabaseUrl = process.env.SUPABASE_URL || 'https://bqbtkaljxsmdcpedrerg.supabase.co';
+const supabaseKey = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxYnRrYWxqeHNtZGNwZWRyZXJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NDg0NDUsImV4cCI6MjA3NDAyNDQ0NX0._XIcJcSg_00b_iOs90QM5GNaKAg5_LEHGDrexDTFcMQ';
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY || supabaseKey;
+
+// 创建Supabase客户端
+const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
 const app = Fastify({ logger: true });
 await app.register(cors, { 
   origin: true,
@@ -234,6 +245,147 @@ app.post('/feedback', async (req, reply) => {
 });
 
 // 认证相关API端点
+
+// 简化的注册API
+app.post('/auth/register', async (req, reply) => {
+  try {
+    const { username, password } = await req.body;
+    
+    if (!username || !password) {
+      return reply.code(400).send({ error: '用户名和密码不能为空' });
+    }
+
+    if (username.length < 3) {
+      return reply.code(400).send({ error: '用户名至少3个字符' });
+    }
+
+    if (password.length < 6) {
+      return reply.code(400).send({ error: '密码至少6个字符' });
+    }
+
+    // 检查用户名是否已存在
+    const { data: existingUser } = await supabaseAdmin
+      .from('user_profiles')
+      .select('id')
+      .eq('username', username)
+      .single();
+
+    if (existingUser) {
+      return reply.code(400).send({ error: '用户名已存在' });
+    }
+
+    // 创建用户（使用简化的邮箱格式）
+    const email = `${username}@cookapp.local`;
+    
+    // 使用普通注册方式，然后手动确认
+    const { data: authData, error: authError } = await supabaseAdmin.auth.signUp({
+      email: email,
+      password: password,
+      options: {
+        data: { username: username }
+      }
+    });
+
+    if (authError) {
+      return reply.code(400).send({ error: '创建用户失败: ' + authError.message });
+    }
+
+    if (!authData.user) {
+      return reply.code(400).send({ error: '用户创建失败' });
+    }
+
+    const userId = authData.user.id;
+
+    // 创建用户资料
+    const { error: profileError } = await supabaseAdmin
+      .from('user_profiles')
+      .insert({
+        user_id: userId,
+        username: username
+      });
+
+    if (profileError) {
+      return reply.code(500).send({ error: '创建用户资料失败' });
+    }
+
+    // 创建积分记录（新用户奖励100积分）
+    const { error: pointsError } = await supabaseAdmin
+      .from('user_points')
+      .insert({
+        user_id: userId,
+        points: 100
+      });
+
+    if (pointsError) {
+      return reply.code(500).send({ error: '创建积分记录失败' });
+    }
+
+    return reply.send({
+      success: true,
+      userId: userId,
+      username: username,
+      points: 100,
+      message: '注册成功！您获得了100积分奖励！'
+    });
+
+  } catch (error) {
+    app.log.error({ err: error }, '注册失败');
+    return reply.code(500).send({ error: '服务器错误' });
+  }
+});
+
+// 简化的登录API
+app.post('/auth/login', async (req, reply) => {
+  try {
+    const { username, password } = await req.body;
+    
+    if (!username || !password) {
+      return reply.code(400).send({ error: '用户名和密码不能为空' });
+    }
+
+    // 使用简化的邮箱格式登录
+    const email = `${username}@cookapp.local`;
+    const { data: authData, error: authError } = await supabaseAdmin.auth.signInWithPassword({
+      email: email,
+      password: password
+    });
+
+    if (authError) {
+      return reply.code(401).send({ error: '用户名或密码错误' });
+    }
+
+    const userId = authData.user.id;
+
+    // 获取用户信息
+    const userInfo = await getUserInfo(userId);
+    if (userInfo.error) {
+      return reply.code(500).send({ error: '获取用户信息失败' });
+    }
+
+    return reply.send({
+      success: true,
+      userId: userId,
+      username: userInfo.username,
+      points: userInfo.points,
+      message: '登录成功！'
+    });
+
+  } catch (error) {
+    app.log.error({ err: error }, '登录失败');
+    return reply.code(500).send({ error: '服务器错误' });
+  }
+});
+
+// 简化的退出API
+app.post('/auth/logout', async (req, reply) => {
+  try {
+    // 这里可以添加清理逻辑，比如清除会话等
+    return reply.send({ success: true, message: '已退出登录' });
+  } catch (error) {
+    app.log.error({ err: error }, '退出登录失败');
+    return reply.code(500).send({ error: '服务器错误' });
+  }
+});
 
 // 获取用户信息
 app.get('/auth/user', { preHandler: authMiddleware }, async (req, reply) => {

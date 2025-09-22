@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能菜谱助手 - 本地认证</title>
+    <script src="https://cdn.jsdelivr.net/npm/iconify-icon@1.0.7/dist/iconify-icon.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .points-display {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-weight: 600;
+        }
+
+        .auth-buttons {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #f8f9fa;
+            color: #333;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .main-content {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+
+        .upload-zone {
+            border: 2px dashed #ddd;
+            border-radius: 15px;
+            padding: 3rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 2rem;
+        }
+
+        .upload-zone:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+
+        .upload-zone.dragover {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+
+        .upload-text {
+            font-size: 1.2rem;
+            color: #666;
+            margin-bottom: 0.5rem;
+        }
+
+        .upload-hint {
+            color: #999;
+            font-size: 0.9rem;
+        }
+
+        .recipe-display {
+            display: none;
+            margin-top: 2rem;
+        }
+
+        .recipe-title {
+            font-size: 2rem;
+            color: #333;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .recipe-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        .ingredients-section, .steps-section {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 15px;
+        }
+
+        .section-title {
+            font-size: 1.3rem;
+            color: #333;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .ingredient-list {
+            list-style: none;
+        }
+
+        .ingredient-item {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .step-list {
+            list-style: none;
+        }
+
+        .step-item {
+            padding: 1rem 0;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            gap: 1rem;
+        }
+
+        .step-number {
+            background: #667eea;
+            color: white;
+            width: 2rem;
+            height: 2rem;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+
+        .step-text {
+            flex: 1;
+            line-height: 1.6;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .loading-icon {
+            font-size: 2rem;
+            color: #667eea;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            color: #e74c3c;
+            text-align: center;
+            padding: 1rem;
+            background: #ffeaea;
+            border-radius: 10px;
+            margin: 1rem 0;
+        }
+
+        .success {
+            color: #27ae60;
+            text-align: center;
+            padding: 1rem;
+            background: #eafaf1;
+            border-radius: 10px;
+            margin: 1rem 0;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .points-cost {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            margin: 1rem 0;
+            text-align: center;
+        }
+
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 400px;
+        }
+
+        .modal-content h2 {
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .modal-content input {
+            width: 100%;
+            padding: 0.75rem;
+            margin-bottom: 1rem;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+        }
+
+        .modal-content button {
+            width: 100%;
+            padding: 0.75rem;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <!-- 头部 -->
+    <header class="header">
+        <div class="logo">🍳 智能菜谱助手</div>
+        <div class="user-info">
+            <!-- 未登录状态 -->
+            <div id="auth-section">
+                <div class="auth-buttons">
+                    <button class="btn btn-primary" onclick="showLogin()">登录</button>
+                    <button class="btn btn-secondary" onclick="showRegister()">注册</button>
+                </div>
+            </div>
+            <!-- 已登录状态 -->
+            <div id="user-section" class="hidden">
+                <div class="points-display">
+                    <iconify-icon icon="mdi:star"></iconify-icon>
+                    <span id="user-points">0</span> 积分
+                </div>
+                <div>
+                    <span id="user-username">用户</span>
+                    <button class="btn btn-secondary" onclick="logout()">退出</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主内容 -->
+    <div class="container">
+        <div class="main-content">
+            <!-- 未登录提示 -->
+            <div id="login-prompt" class="error">
+                <iconify-icon icon="mdi:lock"></iconify-icon>
+                请先登录或注册以使用AI菜谱分析功能
+            </div>
+
+            <!-- 上传区域 -->
+            <div id="upload-section" class="hidden">
+                <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+                    <div class="upload-icon">
+                        <iconify-icon icon="mdi:cloud-upload"></iconify-icon>
+                    </div>
+                    <div class="upload-text">点击或拖拽上传图片</div>
+                    <div class="upload-hint">支持 JPG、PNG、WEBP 格式，最大 10MB</div>
+                </div>
+                <input type="file" id="fileInput" accept="image/*" style="display: none;">
+                
+                <div class="points-cost">
+                    <iconify-icon icon="mdi:information"></iconify-icon>
+                    每次AI分析消耗 10 积分
+                </div>
+            </div>
+
+            <!-- 加载状态 -->
+            <div id="loading-section" class="loading hidden">
+                <div class="loading-icon">
+                    <iconify-icon icon="mdi:loading"></iconify-icon>
+                </div>
+                <div>AI正在分析您的图片...</div>
+            </div>
+
+            <!-- 菜谱显示 -->
+            <div id="recipe-section" class="recipe-display">
+                <div class="recipe-title" id="recipeTitle"></div>
+                <div class="recipe-content">
+                    <div class="ingredients-section">
+                        <div class="section-title">
+                            <iconify-icon icon="mdi:food"></iconify-icon>
+                            主要食材
+                        </div>
+                        <ul class="ingredient-list" id="ingredientList"></ul>
+                    </div>
+                    <div class="steps-section">
+                        <div class="section-title">
+                            <iconify-icon icon="mdi:chef-hat"></iconify-icon>
+                            烹饪步骤
+                        </div>
+                        <ul class="step-list" id="stepList"></ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 登录模态框 -->
+    <div id="loginModal" class="modal hidden">
+        <div class="modal-content">
+            <h2>登录</h2>
+            <form id="loginForm">
+                <input type="text" placeholder="用户名" id="loginUsername" required>
+                <input type="password" placeholder="密码" id="loginPassword" required>
+                <button type="submit">登录</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 注册模态框 -->
+    <div id="registerModal" class="modal hidden">
+        <div class="modal-content">
+            <h2>注册</h2>
+            <form id="registerForm">
+                <input type="text" placeholder="用户名" id="registerUsername" required>
+                <input type="password" placeholder="密码" id="registerPassword" required>
+                <input type="password" placeholder="确认密码" id="registerPasswordConfirm" required>
+                <button type="submit">注册</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // 本地用户存储
+        const LOCAL_STORAGE_KEY = 'cookapp_users';
+        const CURRENT_USER_KEY = 'cookapp_current_user';
+
+        // 全局变量
+        let currentUser = null;
+        let userPoints = 0;
+        let currentJobId = null;
+
+        // 页面加载时检查认证状态
+        document.addEventListener('DOMContentLoaded', async () => {
+            await checkAuthState();
+            setupEventListeners();
+        });
+
+        // 检查认证状态
+        async function checkAuthState() {
+            const storedUser = localStorage.getItem(CURRENT_USER_KEY);
+            if (storedUser) {
+                currentUser = JSON.parse(storedUser);
+                userPoints = currentUser.points || 0;
+                showUserInterface();
+            } else {
+                showAuthInterface();
+            }
+        }
+
+        // 显示用户界面
+        function showUserInterface() {
+            document.getElementById('auth-section').classList.add('hidden');
+            document.getElementById('user-section').classList.remove('hidden');
+            document.getElementById('login-prompt').classList.add('hidden');
+            document.getElementById('upload-section').classList.remove('hidden');
+            
+            document.getElementById('user-points').textContent = userPoints;
+            document.getElementById('user-username').textContent = currentUser.username;
+        }
+
+        // 显示认证界面
+        function showAuthInterface() {
+            document.getElementById('auth-section').classList.remove('hidden');
+            document.getElementById('user-section').classList.add('hidden');
+            document.getElementById('login-prompt').classList.remove('hidden');
+            document.getElementById('upload-section').classList.add('hidden');
+        }
+
+        // 设置事件监听器
+        function setupEventListeners() {
+            // 文件上传
+            document.getElementById('fileInput').addEventListener('change', handleFileUpload);
+            
+            // 拖拽上传
+            const uploadZone = document.getElementById('uploadZone');
+            uploadZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadZone.classList.add('dragover');
+            });
+            uploadZone.addEventListener('dragleave', () => {
+                uploadZone.classList.remove('dragover');
+            });
+            uploadZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadZone.classList.remove('dragover');
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    handleFileUpload({ target: { files } });
+                }
+            });
+
+            // 登录表单
+            document.getElementById('loginForm').addEventListener('submit', handleLogin);
+            
+            // 注册表单
+            document.getElementById('registerForm').addEventListener('submit', handleRegister);
+        }
+
+        // 处理文件上传
+        async function handleFileUpload(event) {
+            const file = event.target.files?.[0];
+            if (!file) return;
+
+            // 检查文件大小
+            if (file.size > 10 * 1024 * 1024) {
+                showError('文件太大，请选择小于10MB的图片');
+                return;
+            }
+
+            // 检查文件类型
+            if (!file.type.startsWith('image/')) {
+                showError('请选择图片文件');
+                return;
+            }
+
+            // 检查积分是否足够
+            if (userPoints < 10) {
+                showError(`积分不足！需要10积分，当前只有${userPoints}积分`);
+                return;
+            }
+
+            try {
+                showLoading();
+                
+                // 上传图片
+                const formData = new FormData();
+                formData.append('image', file);
+                
+                const response = await fetch('http://localhost:8787/jobs', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error('上传失败');
+                }
+
+                const data = await response.json();
+                currentJobId = data.id;
+
+                // 轮询任务状态
+                await pollJobStatus(data.id);
+                
+            } catch (error) {
+                console.error('上传失败:', error);
+                showError('上传失败，请重试');
+                hideLoading();
+            }
+        }
+
+        // 轮询任务状态
+        async function pollJobStatus(jobId) {
+            const maxAttempts = 30;
+            let attempts = 0;
+
+            const poll = async () => {
+                try {
+                    const response = await fetch(`http://localhost:8787/jobs/${jobId}`);
+                    if (!response.ok) {
+                        throw new Error('获取任务状态失败');
+                    }
+
+                    const job = await response.json();
+                    
+                    if (job.status === 'succeeded') {
+                        // 消费积分
+                        consumePoints(10);
+                        
+                        // 显示结果
+                        displayRecipe(job.recipe);
+                        hideLoading();
+                    } else if (job.status === 'failed') {
+                        throw new Error(job.error?.message || '处理失败');
+                    } else if (attempts < maxAttempts) {
+                        attempts++;
+                        setTimeout(poll, 2000);
+                    } else {
+                        throw new Error('处理超时');
+                    }
+                } catch (error) {
+                    console.error('轮询失败:', error);
+                    showError('处理失败，请重试');
+                    hideLoading();
+                }
+            };
+
+            poll();
+        }
+
+        // 消费积分
+        function consumePoints(points) {
+            userPoints -= points;
+            currentUser.points = userPoints;
+            localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(currentUser));
+            document.getElementById('user-points').textContent = userPoints;
+        }
+
+        // 显示菜谱
+        function displayRecipe(recipe) {
+            document.getElementById('recipeTitle').textContent = recipe.name || '识别菜品';
+            
+            // 显示食材
+            const ingredientList = document.getElementById('ingredientList');
+            ingredientList.innerHTML = '';
+            recipe.ingredients?.forEach(ingredient => {
+                const li = document.createElement('li');
+                li.className = 'ingredient-item';
+                li.textContent = ingredient.name;
+                ingredientList.appendChild(li);
+            });
+
+            // 显示步骤
+            const stepList = document.getElementById('stepList');
+            stepList.innerHTML = '';
+            recipe.steps?.forEach((step, index) => {
+                const li = document.createElement('li');
+                li.className = 'step-item';
+                li.innerHTML = `
+                    <div class="step-number">${index + 1}</div>
+                    <div class="step-text">${step}</div>
+                `;
+                stepList.appendChild(li);
+            });
+
+            document.getElementById('recipe-section').style.display = 'block';
+        }
+
+        // 显示加载状态
+        function showLoading() {
+            document.getElementById('loading-section').classList.remove('hidden');
+            document.getElementById('upload-section').classList.add('hidden');
+            document.getElementById('recipe-section').style.display = 'none';
+        }
+
+        // 隐藏加载状态
+        function hideLoading() {
+            document.getElementById('loading-section').classList.add('hidden');
+            document.getElementById('upload-section').classList.remove('hidden');
+        }
+
+        // 显示错误
+        function showError(message) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error';
+            errorDiv.textContent = message;
+            document.querySelector('.main-content').insertBefore(errorDiv, document.querySelector('.main-content').firstChild);
+            
+            setTimeout(() => {
+                errorDiv.remove();
+            }, 5000);
+        }
+
+        // 显示成功消息
+        function showSuccess(message) {
+            const successDiv = document.createElement('div');
+            successDiv.className = 'success';
+            successDiv.textContent = message;
+            document.querySelector('.main-content').insertBefore(successDiv, document.querySelector('.main-content').firstChild);
+            
+            setTimeout(() => {
+                successDiv.remove();
+            }, 3000);
+        }
+
+        // 本地登录处理
+        async function handleLogin(event) {
+            event.preventDefault();
+            const username = document.getElementById('loginUsername').value;
+            const password = document.getElementById('loginPassword').value;
+
+            try {
+                // 从本地存储获取用户数据
+                const users = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || '{}');
+                const user = users[username];
+
+                if (!user || user.password !== password) {
+                    showError('用户名或密码错误');
+                    return;
+                }
+
+                // 设置当前用户
+                currentUser = { username: username, points: user.points };
+                userPoints = user.points;
+                
+                // 保存到本地存储
+                localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(currentUser));
+                
+                showUserInterface();
+                showSuccess('登录成功！');
+                hideModal('loginModal');
+                
+            } catch (error) {
+                console.error('登录失败:', error);
+                showError('登录失败，请重试');
+            }
+        }
+
+        // 本地注册处理
+        async function handleRegister(event) {
+            event.preventDefault();
+            const username = document.getElementById('registerUsername').value;
+            const password = document.getElementById('registerPassword').value;
+            const passwordConfirm = document.getElementById('registerPasswordConfirm').value;
+
+            if (password !== passwordConfirm) {
+                showError('两次输入的密码不一致');
+                return;
+            }
+
+            if (username.length < 3) {
+                showError('用户名至少3个字符');
+                return;
+            }
+
+            if (password.length < 6) {
+                showError('密码至少6个字符');
+                return;
+            }
+
+            try {
+                // 获取现有用户数据
+                const users = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || '{}');
+                
+                if (users[username]) {
+                    showError('用户名已存在');
+                    return;
+                }
+
+                // 创建新用户
+                users[username] = {
+                    password: password,
+                    points: 100, // 新用户奖励100积分
+                    createdAt: new Date().toISOString()
+                };
+
+                // 保存用户数据
+                localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(users));
+
+                // 设置当前用户
+                currentUser = { username: username, points: 100 };
+                userPoints = 100;
+                
+                // 保存到本地存储
+                localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(currentUser));
+                
+                showUserInterface();
+                showSuccess('注册成功！您获得了100积分奖励！');
+                hideModal('registerModal');
+                
+            } catch (error) {
+                console.error('注册失败:', error);
+                showError('注册失败，请重试');
+            }
+        }
+
+        // 退出登录
+        function logout() {
+            currentUser = null;
+            userPoints = 0;
+            localStorage.removeItem(CURRENT_USER_KEY);
+            showAuthInterface();
+            showSuccess('已退出登录');
+        }
+
+        // 显示登录模态框
+        function showLogin() {
+            showModal('loginModal');
+        }
+
+        // 显示注册模态框
+        function showRegister() {
+            showModal('registerModal');
+        }
+
+        // 显示模态框
+        function showModal(modalId) {
+            document.getElementById(modalId).classList.remove('hidden');
+        }
+
+        // 隐藏模态框
+        function hideModal(modalId) {
+            document.getElementById(modalId).classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
