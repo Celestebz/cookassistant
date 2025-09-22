@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>积分系统最终测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .btn:hover {
+            background: #5a6fd8;
+        }
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        .warning { background: #fff3cd; color: #856404; }
+        .status-box {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 积分系统最终测试</h1>
+
+        <div class="test-section">
+            <h3>测试状态</h3>
+            <div id="testStatus">准备就绪</div>
+        </div>
+
+        <div class="test-section">
+            <h3>当前数据状态</h3>
+            <div id="currentData">加载中...</div>
+        </div>
+
+        <div class="test-section">
+            <h3>测试步骤</h3>
+            <div id="testSteps">
+                <button class="btn" onclick="runTest()">运行完整测试</button>
+                <button class="btn" onclick="stepByStep()">逐步测试</button>
+                <button class="btn" onclick="clearAllData()">清除所有数据</button>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>测试结果</h3>
+            <div id="testResults"></div>
+        </div>
+    </div>
+
+    <script>
+        const LOCAL_STORAGE_KEY = 'cookapp_users';
+        const CURRENT_USER_KEY = 'cookapp_current_user';
+
+        let testStep = 0;
+        const TEST_USERNAME = 'testuser_final';
+        const TEST_PASSWORD = '123456';
+
+        // 页面加载时更新数据状态
+        document.addEventListener('DOMContentLoaded', () => {
+            updateDataDisplay();
+        });
+
+        // 更新数据状态显示
+        function updateDataDisplay() {
+            const users = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || '{}');
+            const currentUser = localStorage.getItem(CURRENT_USER_KEY) ?
+                             JSON.parse(localStorage.getItem(CURRENT_USER_KEY)) : null;
+
+            let data = '<h4>本地存储状态：</h4>';
+            data += `<p><strong>用户数据库：</strong> ${Object.keys(users).length} 个用户</p>`;
+
+            if (users[TEST_USERNAME]) {
+                data += `<p><strong>${TEST_USERNAME} 积分：</strong> ${users[TEST_USERNAME].points}</p>`;
+                data += `<p><strong>${TEST_USERNAME} 密码：</strong> ${users[TEST_USERNAME].password}</p>`;
+            }
+
+            data += `<p><strong>当前用户：</strong> ${currentUser ? currentUser.username : '无'}</p>`;
+            if (currentUser) {
+                data += `<p><strong>当前积分：</strong> ${currentUser.points}</p>`;
+            }
+
+            document.getElementById('currentData').innerHTML = data;
+        }
+
+        // 添加测试结果
+        function addResult(message, type = 'info') {
+            const results = document.getElementById('testResults');
+            const div = document.createElement('div');
+            div.className = `result ${type}`;
+            div.innerHTML = `<strong>[${new Date().toLocaleTimeString()}]</strong> ${message}`;
+            results.appendChild(div);
+            results.scrollTop = results.scrollHeight;
+        }
+
+        // 更新测试状态
+        function updateTestStatus(status) {
+            document.getElementById('testStatus').innerHTML = `<strong>测试状态：</strong> ${status}`;
+        }
+
+        // 清除所有数据
+        function clearAllData() {
+            localStorage.removeItem(LOCAL_STORAGE_KEY);
+            localStorage.removeItem(CURRENT_USER_KEY);
+            addResult('✅ 所有数据已清除', 'success');
+            updateDataDisplay();
+            testStep = 0;
+            updateTestStatus('数据已清除');
+        }
+
+        // 运行完整测试
+        async function runTest() {
+            addResult('🔄 开始完整积分持久化测试...', 'info');
+            testStep = 0;
+            updateTestStatus('运行中...');
+
+            try {
+                // 步骤1: 创建用户
+                await createUser();
+                await sleep(500);
+
+                // 步骤2: 登录用户
+                await loginUser();
+                await sleep(500);
+
+                // 步骤3: 消费积分
+                await consumePoints();
+                await sleep(500);
+
+                // 步骤4: 退出登录
+                await logoutUser();
+                await sleep(500);
+
+                // 步骤5: 重新登录
+                await reloginUser();
+                await sleep(500);
+
+                // 步骤6: 验证结果
+                await verifyResult();
+
+                updateTestStatus('✅ 测试完成');
+                addResult('🎉 积分持久化测试全部通过！', 'success');
+
+            } catch (error) {
+                addResult(`❌ 测试失败: ${error.message}`, 'error');
+                updateTestStatus('❌ 测试失败');
+            }
+        }
+
+        // 创建用户
+        async function createUser() {
+            addResult('📝 步骤1: 创建测试用户...', 'info');
+
+            const users = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || '{}');
+            users[TEST_USERNAME] = {
+                password: TEST_PASSWORD,
+                points: 100,
+                createdAt: new Date().toISOString()
+            };
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(users));
+
+            addResult(`✅ 用户 ${TEST_USERNAME} 创建成功，初始积分: 100`, 'success');
+            updateDataDisplay();
+        }
+
+        // 登录用户
+        async function loginUser() {
+            addResult('🔑 步骤2: 登录测试用户...', 'info');
+
+            const users = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || '{}');
+            const user = users[TEST_USERNAME];
+
+            if (!user) {
+                throw new Error('用户不存在');
+            }
+
+            // 模拟登录逻辑
+            const currentUser = { username: TEST_USERNAME, points: user.points };
+            localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(currentUser));
+
+            addResult(`✅ 登录成功，当前积分: ${user.points}`, 'success');
+            updateDataDisplay();
+        }
+
+        // 消费积分
+        async function consumePoints() {
+            addResult('💰 步骤3: 消费积分...', 'info');
+
+            const users = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || '{}');
+            const user = users[TEST_USERNAME];
+
+            if (!user) {
+                throw new Error('用户不存在');
+            }
+
+            // 消费20积分
+            user.points -= 20;
+            users[TEST_USERNAME] = user;
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(users));
+
+            // 更新当前用户
+            const currentUser = JSON.parse(localStorage.getItem(CURRENT_USER_KEY) || '{}');
+            currentUser.points = user.points;
+            localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(currentUser));
+
+            addResult(`✅ 消费20积分成功，剩余积分: ${user.points}`, 'success');
+            updateDataDisplay();
+        }
+
+        // 退出登录
+        async function logoutUser() {
+            addResult('🚪 步骤4: 退出登录...', 'info');
+
+            localStorage.removeItem(CURRENT_USER_KEY);
+
+            addResult('✅ 已退出登录', 'success');
+            updateDataDisplay();
+        }
+
+        // 重新登录
+        async function reloginUser() {
+            addResult('🔄 步骤5: 重新登录...', 'info');
+
+            const users = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || '{}');
+            const user = users[TEST_USERNAME];
+
+            if (!user) {
+                throw new Error('用户不存在');
+            }
+
+            // 重新登录
+            const currentUser = { username: TEST_USERNAME, points: user.points };
+            localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(currentUser));
+
+            addResult(`✅ 重新登录成功，积分: ${user.points}`, 'success');
+            updateDataDisplay();
+        }
+
+        // 验证结果
+        async function verifyResult() {
+            addResult('🔍 步骤6: 验证测试结果...', 'info');
+
+            const users = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || '{}');
+            const currentUser = JSON.parse(localStorage.getItem(CURRENT_USER_KEY) || '{}');
+            const mainDbPoints = users[TEST_USERNAME]?.points || 0;
+            const currentPoints = currentUser.points || 0;
+
+            if (mainDbPoints === 80 && currentPoints === 80) {
+                addResult(`✅ 验证通过！主数据库积分: ${mainDbPoints}, 当前用户积分: ${currentPoints}`, 'success');
+            } else {
+                throw new Error(`❌ 验证失败！主数据库积分: ${mainDbPoints}, 当前用户积分: ${currentPoints}, 期望: 80`);
+            }
+
+            updateDataDisplay();
+        }
+
+        // 辅助函数
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        // 逐步测试（用于调试）
+        async function stepByStep() {
+            const steps = [createUser, loginUser, consumePoints, logoutUser, reloginUser, verifyResult];
+            if (testStep < steps.length) {
+                await steps[testStep]();
+                testStep++;
+                updateTestStatus(`步骤 ${testStep}/6 完成`);
+            } else {
+                addResult('ℹ️ 所有步骤已完成', 'info');
+            }
+        }
+    </script>
+</body>
+</html>

@@ -418,23 +418,73 @@
         async function checkAuthState() {
             const storedUser = localStorage.getItem(CURRENT_USER_KEY);
             if (storedUser) {
-                currentUser = JSON.parse(storedUser);
-                userPoints = currentUser.points || 0;
-                showUserInterface();
+                try {
+                    currentUser = JSON.parse(storedUser);
+                    console.log('页面加载 - 存储的用户数据:', currentUser);
+
+                    // 从主数据库同步最新积分
+                    const users = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || '{}');
+                    console.log('页面加载 - 主数据库用户:', Object.keys(users));
+
+                    if (users[currentUser.username]) {
+                        const mainDbPoints = users[currentUser.username].points || 0;
+                        console.log('页面加载 - 主数据库积分:', mainDbPoints);
+
+                        // 比较积分
+                        const storedPoints = currentUser.points || 0;
+                        console.log('页面加载 - 存储的积分:', storedPoints);
+
+                        if (mainDbPoints !== storedPoints) {
+                            console.log('页面加载 - 检测到积分差异，同步主数据库积分');
+                            userPoints = mainDbPoints;
+                            currentUser.points = mainDbPoints;
+                            // 更新当前用户存储
+                            localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(currentUser));
+                        } else {
+                            userPoints = storedPoints;
+                        }
+                    } else {
+                        console.log('页面加载 - 用户不在主数据库中，使用存储积分');
+                        userPoints = currentUser.points || 0;
+                    }
+
+                    console.log('页面加载 - 最终使用积分:', userPoints);
+
+                    await refreshUserInterface();
+                } catch (error) {
+                    console.error('检查认证状态失败:', error);
+                    showAuthInterface();
+                }
             } else {
                 showAuthInterface();
             }
         }
 
-        // 显示用户界面
-        function showUserInterface() {
+        // 刷新用户界面（确保积分显示最新）
+        async function refreshUserInterface() {
             document.getElementById('auth-section').classList.add('hidden');
             document.getElementById('user-section').classList.remove('hidden');
             document.getElementById('login-prompt').classList.add('hidden');
             document.getElementById('upload-section').classList.remove('hidden');
-            
-            document.getElementById('user-points').textContent = userPoints;
-            document.getElementById('user-username').textContent = currentUser.username;
+
+            // 强制更新显示
+            const pointsElement = document.getElementById('user-points');
+            const usernameElement = document.getElementById('user-username');
+
+            pointsElement.textContent = userPoints;
+            usernameElement.textContent = currentUser.username;
+
+            console.log('界面刷新 - 显示积分:', userPoints);
+
+            // 强制重新渲染
+            pointsElement.style.display = 'none';
+            pointsElement.offsetHeight; // 触发重排
+            pointsElement.style.display = '';
+        }
+
+        // 显示用户界面
+        function showUserInterface() {
+            refreshUserInterface();
         }
 
         // 显示认证界面
@@ -522,8 +572,13 @@
                 
             } catch (error) {
                 console.error('上传失败:', error);
-                showError('上传失败，请重试');
+                showError(`上传失败: ${error.message || '请重试'}`);
                 hideLoading();
+
+                // 如果是网络错误，提供更具体的提示
+                if (error.message?.includes('fetch') || error.message?.includes('network')) {
+                    showError('网络连接失败，请检查后端服务是否运行');
+                }
             }
         }
 
@@ -542,16 +597,21 @@
                     const job = await response.json();
                     
                     if (job.status === 'succeeded') {
+                        console.log('任务成功，准备扣除积分...');
                         // 消费积分
-                        consumePoints(10);
-                        
+                        await consumePoints(10);
+
                         // 显示结果
                         displayRecipe(job.recipe);
                         hideLoading();
+
+                        console.log('积分扣除完成，显示菜谱结果');
                     } else if (job.status === 'failed') {
+                        console.error('任务失败:', job.error);
                         throw new Error(job.error?.message || '处理失败');
                     } else if (attempts < maxAttempts) {
                         attempts++;
+                        console.log(`任务进行中，尝试 ${attempts}/${maxAttempts}...`);
                         setTimeout(poll, 2000);
                     } else {
                         throw new Error('处理超时');
@@ -567,11 +627,34 @@
         }
 
         // 消费积分
-        function consumePoints(points) {
-            userPoints -= points;
-            currentUser.points = userPoints;
-            localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(currentUser));
-            document.getElementById('user-points').textContent = userPoints;
+        async function consumePoints(points) {
+            try {
+                console.log('开始消费积分:', points);
+
+                // 更新本地变量
+                userPoints -= points;
+                currentUser.points = userPoints;
+
+                // 同步到主数据库
+                const users = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || '{}');
+                if (users[currentUser.username]) {
+                    users[currentUser.username].points = userPoints;
+                    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(users));
+                    console.log('主数据库积分已更新:', userPoints);
+                }
+
+                // 更新当前用户存储
+                localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(currentUser));
+
+                // 更新界面显示
+                document.getElementById('user-points').textContent = userPoints;
+
+                console.log('积分消费完成，剩余:', userPoints);
+
+            } catch (error) {
+                console.error('消费积分失败:', error);
+                showError('积分更新失败');
+            }
         }
 
         // 显示菜谱
@@ -657,17 +740,23 @@
                     return;
                 }
 
-                // 设置当前用户
+                console.log('登录前 - 主数据库积分:', user.points);
+
+                // 设置当前用户，使用主数据库的积分
                 currentUser = { username: username, points: user.points };
                 userPoints = user.points;
-                
+
+                console.log('登录后 - 当前用户积分:', userPoints);
+
                 // 保存到本地存储
                 localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(currentUser));
-                
-                showUserInterface();
+
+                // 强制刷新界面
+                await refreshUserInterface();
+
                 showSuccess('登录成功！');
                 hideModal('loginModal');
-                
+
             } catch (error) {
                 console.error('登录失败:', error);
                 showError('登录失败，请重试');

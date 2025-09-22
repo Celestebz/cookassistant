@@ -504,6 +504,11 @@ app.post('/auth/check-points', { preHandler: authMiddleware }, async (req, reply
   }
 });
 
+// 添加健康检查端点
+app.get('/health', async (req, reply) => {
+  return reply.send({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 const port = process.env.PORT || 8787;
 app.listen({ port, host: '0.0.0.0' }).then(() => {
   app.log.info(`API listening on http://localhost:${port}`);

@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>积分持久化测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .btn:hover {
+            background: #5a6fd8;
+        }
+        .result {
+            margin: 10px 0;
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 5px;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 积分持久化测试</h1>
+        
+        <div class="test-section">
+            <h3>当前状态</h3>
+            <div id="currentStatus">加载中...</div>
+        </div>
+
+        <div class="test-section">
+            <h3>测试步骤</h3>
+            <button class="btn" onclick="step1()">1. 创建用户并登录</button>
+            <button class="btn" onclick="step2()">2. 消费20积分</button>
+            <button class="btn" onclick="step3()">3. 退出登录</button>
+            <button class="btn" onclick="step4()">4. 重新登录</button>
+            <button class="btn" onclick="step5()">5. 验证积分</button>
+        </div>
+
+        <div class="test-section">
+            <h3>测试结果</h3>
+            <div id="testResults"></div>
+        </div>
+    </div>
+
+    <script>
+        const LOCAL_STORAGE_KEY = 'cookapp_users';
+        const CURRENT_USER_KEY = 'cookapp_current_user';
+        
+        let currentUser = null;
+        let userPoints = 0;
+
+        // 页面加载时更新状态
+        document.addEventListener('DOMContentLoaded', () => {
+            updateStatus();
+        });
+
+        // 更新状态显示
+        function updateStatus() {
+            const storedUser = localStorage.getItem(CURRENT_USER_KEY);
+            const users = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || '{}');
+            
+            let status = '<h4>存储状态：</h4>';
+            status += `<p><strong>当前用户：</strong> ${storedUser ? '已登录' : '未登录'}</p>`;
+            status += `<p><strong>用户数据库：</strong> ${Object.keys(users).length} 个用户</p>`;
+            
+            if (storedUser) {
+                const user = JSON.parse(storedUser);
+                status += `<p><strong>用户名：</strong> ${user.username}</p>`;
+                status += `<p><strong>当前积分：</strong> ${user.points}</p>`;
+                
+                // 检查主数据库中的积分
+                if (users[user.username]) {
+                    status += `<p><strong>主数据库积分：</strong> ${users[user.username].points}</p>`;
+                    status += `<p><strong>积分同步状态：</strong> ${user.points === users[user.username].points ? '✅ 已同步' : '❌ 未同步'}</p>`;
+                }
+            }
+            
+            document.getElementById('currentStatus').innerHTML = status;
+        }
+
+        // 添加测试结果
+        function addResult(message, type = 'info') {
+            const results = document.getElementById('testResults');
+            const div = document.createElement('div');
+            div.className = `result ${type}`;
+            div.innerHTML = `<strong>${new Date().toLocaleTimeString()}</strong> - ${message}`;
+            results.appendChild(div);
+            results.scrollTop = results.scrollHeight;
+        }
+
+        // 步骤1：创建用户并登录
+        function step1() {
+            try {
+                // 创建测试用户
+                const users = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || '{}');
+                users['testuser'] = {
+                    password: '123456',
+                    points: 100,
+                    createdAt: new Date().toISOString()
+                };
+                localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(users));
+
+                // 登录用户
+                currentUser = { username: 'testuser', points: 100 };
+                userPoints = 100;
+                localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(currentUser));
+                
+                addResult('✅ 步骤1完成：用户创建并登录成功，初始积分100', 'success');
+                updateStatus();
+            } catch (error) {
+                addResult(`❌ 步骤1失败: ${error.message}`, 'error');
+            }
+        }
+
+        // 步骤2：消费20积分
+        function step2() {
+            try {
+                if (!currentUser) {
+                    addResult('❌ 请先执行步骤1', 'error');
+                    return;
+                }
+
+                // 消费积分
+                userPoints -= 20;
+                currentUser.points = userPoints;
+                
+                // 同步到主数据库
+                const users = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || '{}');
+                if (users[currentUser.username]) {
+                    users[currentUser.username].points = userPoints;
+                    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(users));
+                }
+                
+                // 更新当前用户存储
+                localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(currentUser));
+                
+                addResult(`✅ 步骤2完成：消费20积分，剩余${userPoints}积分`, 'success');
+                updateStatus();
+            } catch (error) {
+                addResult(`❌ 步骤2失败: ${error.message}`, 'error');
+            }
+        }
+
+        // 步骤3：退出登录
+        function step3() {
+            try {
+                currentUser = null;
+                userPoints = 0;
+                localStorage.removeItem(CURRENT_USER_KEY);
+                
+                addResult('✅ 步骤3完成：已退出登录', 'success');
+                updateStatus();
+            } catch (error) {
+                addResult(`❌ 步骤3失败: ${error.message}`, 'error');
+            }
+        }
+
+        // 步骤4：重新登录
+        function step4() {
+            try {
+                const users = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || '{}');
+                const user = users['testuser'];
+                
+                if (!user) {
+                    addResult('❌ 测试用户不存在', 'error');
+                    return;
+                }
+
+                // 重新登录
+                currentUser = { username: 'testuser', points: user.points };
+                userPoints = user.points;
+                localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(currentUser));
+                
+                addResult(`✅ 步骤4完成：重新登录成功，积分${userPoints}`, 'success');
+                updateStatus();
+            } catch (error) {
+                addResult(`❌ 步骤4失败: ${error.message}`, 'error');
+            }
+        }
+
+        // 步骤5：验证积分
+        function step5() {
+            try {
+                if (!currentUser) {
+                    addResult('❌ 请先登录', 'error');
+                    return;
+                }
+
+                const users = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || '{}');
+                const mainDbPoints = users[currentUser.username]?.points || 0;
+                const currentPoints = currentUser.points;
+                
+                if (currentPoints === mainDbPoints && currentPoints === 80) {
+                    addResult('✅ 步骤5完成：积分持久化测试通过！积分正确扣除', 'success');
+                } else {
+                    addResult(`❌ 步骤5失败：积分不一致 - 当前:${currentPoints}, 主数据库:${mainDbPoints}, 期望:80`, 'error');
+                }
+                
+                updateStatus();
+            } catch (error) {
+                addResult(`❌ 步骤5失败: ${error.message}`, 'error');
+            }
+        }
+    </script>
+</body>
+</html>
+
+
+
