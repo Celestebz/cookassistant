@@ -208,6 +208,21 @@ async function processJob(jobId) {
     const hasValidRecipe = job.recipe?.steps?.length > 0;
     job.status = hasValidRecipe ? 'succeeded' : 'partial';
     job.completedAt = now();
+    
+    // AI分析完成后扣除积分
+    if (job.userId && (job.status === 'succeeded' || job.status === 'partial')) {
+      console.log('💰 开始扣除积分，用户ID:', job.userId);
+      try {
+        const consumeResult = await consumePoints(job.userId, 10);
+        if (consumeResult.success) {
+          console.log('✅ 积分扣除成功，剩余积分:', consumeResult.newPoints);
+        } else {
+          console.error('❌ 积分扣除失败:', consumeResult.error);
+        }
+      } catch (error) {
+        console.error('❌ 积分扣除异常:', error);
+      }
+    }
   } catch (err) {
     app.log.error({ err }, 'job failed');
     job.status = job.recipe?.steps?.length ? 'partial' : 'failed';
@@ -215,7 +230,7 @@ async function processJob(jobId) {
   }
 }
 
-app.post('/jobs', async (req, reply) => {
+app.post('/jobs', { preHandler: authMiddleware }, async (req, reply) => {
   const file = await req.file();
   if (!file) return reply.code(400).send({ error: 'image file is required' });
   const ext = (file.filename?.split('.').pop() || 'jpg').toLowerCase();
@@ -225,7 +240,13 @@ app.post('/jobs', async (req, reply) => {
   const base = process.env.PUBLIC_BASE_URL || `${req.protocol}://${req.headers.host}`;
   const inputImageUrl = `${base}/uploads/${fname}`;
   const jobId = 'job_' + nanoid(8);
-  const job = { id: jobId, status: 'queued', inputImageUrl, createdAt: now() };
+  const job = { 
+    id: jobId, 
+    status: 'queued', 
+    inputImageUrl, 
+    userId: req.user.id, // 记录用户ID用于积分扣除
+    createdAt: now() 
+  };
   jobs.set(jobId, job);
   processJob(jobId).catch(() => {});
   return reply.code(201).send({ id: jobId, status: job.status, createdAt: job.createdAt });
@@ -451,10 +472,19 @@ app.post('/auth/login', async (req, reply) => {
       return reply.code(500).send({ error: '获取用户信息失败' });
     }
 
+    // 如果用户名为默认值，尝试从邮箱获取用户名
+    let displayUsername = userInfo.username;
+    if (displayUsername === '用户') {
+      // 从邮箱中提取用户名
+      const emailPrefix = email.split('@')[0];
+      displayUsername = emailPrefix;
+      console.log('使用邮箱前缀作为用户名:', displayUsername);
+    }
+
     return reply.send({
       success: true,
       userId: userId,
-      username: userInfo.username,
+      username: displayUsername,
       points: userInfo.points,
       message: '登录成功！'
     });
@@ -484,9 +514,26 @@ app.get('/auth/user', { preHandler: authMiddleware }, async (req, reply) => {
       return reply.code(500).send({ error: '获取用户信息失败' });
     }
     
+    // 如果用户名为默认值，尝试从邮箱获取用户名
+    let displayUsername = userInfo.username;
+    if (displayUsername === '用户') {
+      try {
+        // 从Supabase auth获取用户信息
+        const { data: { user }, error: authError } = await supabaseAdmin.auth.admin.getUserById(req.user.id);
+        if (user && user.email) {
+          // 从邮箱中提取用户名
+          const emailPrefix = user.email.split('@')[0];
+          displayUsername = emailPrefix;
+          console.log('从邮箱获取用户名:', displayUsername);
+        }
+      } catch (error) {
+        console.error('从auth获取用户信息失败:', error);
+      }
+    }
+    
     return reply.send({
       id: req.user.id,
-      username: userInfo.username,
+      username: displayUsername,
       points: userInfo.points
     });
   } catch (error) {
