@@ -1,7 +1,19 @@
 {
+  "name": "cookassistant",
+  "version": "1.0.0",
+  "description": "AI-powered cooking assistant with image analysis",
+  "main": "backend/src/index.js",
+  "scripts": {
+    "start": "cd backend && node src/index.js",
+    "dev": "cd backend && node --watch src/index.js",
+    "build": "echo 'No build step required'"
+  },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",
     "form-data": "^4.0.4",
     "node-fetch": "^3.3.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
