@@ -467,10 +467,16 @@
                 if (response.ok) {
                     const data = await response.json()
                     console.log('用户信息API返回数据:', data)
-                    userPoints = data.points || 0
+                    userPoints = Math.max(0, data.points || 0) // 确保积分不为负
                     document.getElementById('user-points').textContent = userPoints
                     document.getElementById('user-username').textContent = data.username || '用户'
                     console.log('用户数据加载成功:', { username: data.username, points: userPoints })
+                    console.log('设置用户名到DOM:', data.username)
+                    
+                    // 如果积分为0，显示提醒
+                    if (userPoints === 0) {
+                        showInsufficientPointsAlert()
+                    }
                 } else {
                     const errorText = await response.text()
                     console.error('获取用户信息失败:', response.status, response.statusText, errorText)
@@ -497,6 +503,17 @@
             
             console.log('显示用户界面，当前积分:', userPoints)
             console.log('当前用户名:', document.getElementById('user-username').textContent)
+            
+            // 强制设置用户名（如果当前显示的是默认值）
+            if (document.getElementById('user-username').textContent === '用户') {
+                console.log('检测到默认用户名，尝试从session获取')
+                // 尝试从当前用户信息获取用户名
+                if (currentUser && currentUser.email) {
+                    const username = currentUser.email.split('@')[0]
+                    console.log('从邮箱提取用户名:', username)
+                    document.getElementById('user-username').textContent = username
+                }
+            }
             
             // 确保积分显示正确
             if (userPoints === 0 || userPoints === undefined) {
@@ -566,11 +583,20 @@
             const pointsCheck = await checkPoints(10)
             if (!pointsCheck.hasEnough) {
                 showError(`积分不足！需要10积分，当前只有${pointsCheck.currentPoints}积分`)
+                showInsufficientPointsAlert()
                 return
             }
 
             try {
                 showLoading()
+                
+                // 获取当前session
+                const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession()
+                
+                if (sessionError || !session) {
+                    showError('请先登录')
+                    return
+                }
                 
                 // 上传图片
                 const formData = new FormData()
@@ -578,6 +604,9 @@
                 
                 const response = await fetch('http://localhost:8787/jobs', {
                     method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${session.access_token}`
+                    },
                     body: formData
                 })
 
@@ -637,6 +666,37 @@
             }
         }
 
+        // 显示积分不足提醒
+        function showInsufficientPointsAlert() {
+            const alertDiv = document.createElement('div')
+            alertDiv.className = 'error'
+            alertDiv.innerHTML = `
+                <div style="text-align: center; padding: 1rem;">
+                    <h3 style="color: #e74c3c; margin: 0 0 1rem 0;">⚠️ 积分不足</h3>
+                    <p style="margin: 0 0 1rem 0;">您的积分已用完，无法继续使用AI分析功能。</p>
+                    <p style="margin: 0; color: #666;">请等待积分恢复或联系管理员获取更多积分。</p>
+                </div>
+            `
+            
+            // 插入到页面顶部
+            const mainContent = document.getElementById('main-content')
+            mainContent.insertBefore(alertDiv, mainContent.firstChild)
+            
+            // 禁用上传功能
+            const uploadButton = document.querySelector('input[type="file"]')
+            if (uploadButton) {
+                uploadButton.disabled = true
+                uploadButton.style.opacity = '0.5'
+            }
+            
+            // 5秒后自动隐藏提醒
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.parentNode.removeChild(alertDiv)
+                }
+            }, 5000)
+        }
+
         // 轮询任务状态
         async function pollJobStatus(jobId) {
             const maxAttempts = 30
@@ -654,6 +714,9 @@
                     if (job.status === 'succeeded') {
                         // 消费积分
                         await consumePoints(10)
+                        
+                        // 刷新用户数据以同步积分
+                        await loadUserData()
                         
                         // 显示结果
                         displayRecipe(job.recipe)
@@ -821,6 +884,12 @@
                         hideModal('loginModal')
                     }, 1000)
                 }, 500)
+                
+                // 强制设置用户名（从登录响应中获取）
+                if (data.username && data.username !== '用户') {
+                    console.log('从登录响应设置用户名:', data.username)
+                    document.getElementById('user-username').textContent = data.username
+                }
             } catch (error) {
                 showModalError('loginError', '登录失败，请重试')
             }
