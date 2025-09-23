@@ -642,12 +642,73 @@ app.post('/auth/check-points', { preHandler: authMiddleware }, async (req, reply
 
 // 添加健康检查端点
 app.get('/health', async (req, reply) => {
-  return reply.send({ status: 'ok', timestamp: new Date().toISOString() });
+  return reply.send({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString() 
+  });
 });
 
-const port = process.env.PORT || 8787;
-app.listen({ port, host: '0.0.0.0' }).then(() => {
-  app.log.info(`API listening on http://localhost:${port}`);
+// 添加根路径健康检查（Railway兼容性）
+app.get('/', async (req, reply) => {
+  return reply.send({ 
+    status: 'ok', 
+    service: 'cook-assistant-api',
+    timestamp: new Date().toISOString() 
+  });
 });
+
+// 测试数据库连接
+async function testDatabaseConnection() {
+  try {
+    app.log.info('🔍 Testing database connection...');
+    const { data, error } = await supabaseAdmin
+      .from('user_points')
+      .select('count')
+      .limit(1);
+    
+    if (error) {
+      app.log.error({ error }, 'Database connection failed');
+      return false;
+    }
+    
+    app.log.info('✅ Database connection successful');
+    return true;
+  } catch (err) {
+    app.log.error({ err }, 'Database connection test failed');
+    return false;
+  }
+}
+
+const port = process.env.PORT || 8787;
+
+// 启动服务器
+async function startServer() {
+  try {
+    // 测试数据库连接
+    const dbConnected = await testDatabaseConnection();
+    if (!dbConnected) {
+      app.log.warn('⚠️ Database connection failed, but continuing startup...');
+    }
+    
+    // 启动HTTP服务器
+    await app.listen({ port, host: '0.0.0.0' });
+    
+    app.log.info(`🚀 API listening on http://0.0.0.0:${port}`);
+    app.log.info(`📊 Health check available at http://0.0.0.0:${port}/health`);
+    app.log.info(`🔗 Root endpoint available at http://0.0.0.0:${port}/`);
+    
+    // 发送启动完成信号
+    if (process.send) {
+      process.send('ready');
+    }
+    
+  } catch (err) {
+    app.log.error({ err }, 'Failed to start server');
+    process.exit(1);
+  }
+}
+
+// 启动应用
+startServer();
 
 
