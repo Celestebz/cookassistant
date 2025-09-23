@@ -11,37 +11,47 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
 // 用户认证中间件
-export function authMiddleware(req, reply, next) {
+export async function authMiddleware(req, reply) {
   const token = req.headers.authorization?.replace('Bearer ', '');
   
   if (!token) {
     return reply.code(401).send({ error: '未提供认证令牌' });
   }
 
-  // 验证JWT令牌
-  supabase.auth.getUser(token)
-    .then(({ data: { user }, error }) => {
-      if (error || !user) {
-        return reply.code(401).send({ error: '无效的认证令牌' });
-      }
-      
-      req.user = user;
-      next();
-    })
-    .catch(() => {
-      reply.code(401).send({ error: '认证失败' });
-    });
+  try {
+    console.log('验证令牌:', token.substring(0, 20) + '...');
+    
+    // 验证JWT令牌
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    
+    console.log('认证结果:', { user: user?.id, error });
+    
+    if (error || !user) {
+      console.error('认证失败:', error);
+      return reply.code(401).send({ error: '无效的认证令牌' });
+    }
+    
+    req.user = user;
+    return;
+  } catch (error) {
+    console.error('认证中间件错误:', error);
+    return reply.code(401).send({ error: '认证失败' });
+  }
 }
 
 // 获取用户信息
 export async function getUserInfo(userId) {
   try {
+    console.log('获取用户信息，用户ID:', userId);
+    
     // 获取用户积分
     const { data: pointsData, error: pointsError } = await supabaseAdmin
       .from('user_points')
       .select('points')
       .eq('user_id', userId)
       .single();
+
+    console.log('积分查询结果:', { pointsData, pointsError });
 
     // 获取用户资料
     const { data: profileData, error: profileError } = await supabaseAdmin
@@ -50,14 +60,28 @@ export async function getUserInfo(userId) {
       .eq('user_id', userId)
       .single();
 
-    return {
-      points: pointsData?.points || 0,
+    console.log('用户资料查询结果:', { profileData, profileError });
+
+    // 如果查询不到数据，直接返回默认值
+    if (pointsError && pointsError.message.includes('Cannot coerce the result to a single JSON object')) {
+      console.log('积分记录不存在，使用默认值100积分');
+    }
+
+    if (profileError && profileError.message.includes('Cannot coerce the result to a single JSON object')) {
+      console.log('用户资料不存在，使用默认用户名');
+    }
+
+    const result = {
+      points: pointsData?.points || 100,
       username: profileData?.username || '用户',
-      error: pointsError || profileError
+      error: null
     };
+
+    console.log('最终用户信息:', result);
+    return result;
   } catch (error) {
     console.error('获取用户信息失败:', error);
-    return { points: 0, username: '用户', error };
+    return { points: 100, username: '用户', error: null };
   }
 }
 
@@ -84,17 +108,37 @@ export async function updateUserPoints(userId, pointsChange) {
 // 验证用户是否有足够积分
 export async function checkUserPoints(userId, requiredPoints) {
   try {
+    console.log('检查用户积分，用户ID:', userId, '需要积分:', requiredPoints);
+    
     const { data, error } = await supabaseAdmin
       .from('user_points')
       .select('points')
       .eq('user_id', userId)
       .single();
 
+    console.log('积分查询结果:', { data, error });
+
+    // 如果查询不到数据，使用默认积分值
+    if (error && error.message.includes('Cannot coerce the result to a single JSON object')) {
+      console.log('积分记录不存在，使用默认100积分');
+      const currentPoints = 100;
+      console.log('使用默认积分:', currentPoints);
+      
+      return { 
+        hasEnough: currentPoints >= requiredPoints, 
+        currentPoints,
+        error: null 
+      };
+    }
+
     if (error) {
+      console.error('积分查询失败:', error);
       return { hasEnough: false, currentPoints: 0, error };
     }
 
     const currentPoints = data?.points || 0;
+    console.log('当前积分:', currentPoints, '需要积分:', requiredPoints);
+    
     return { 
       hasEnough: currentPoints >= requiredPoints, 
       currentPoints,

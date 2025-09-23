@@ -295,37 +295,125 @@ app.post('/auth/register', async (req, reply) => {
     }
 
     const userId = authData.user.id;
+    console.log('注册创建的用户ID:', userId);
 
-    // 创建用户资料
-    const { error: profileError } = await supabaseAdmin
+    // 创建用户资料，如果用户名重复则生成新用户名
+    let finalUsername = username;
+    let profileError = null;
+    
+    // 尝试创建用户资料
+    const { error: initialProfileError } = await supabaseAdmin
       .from('user_profiles')
       .insert({
         user_id: userId,
         username: username
       });
+    
+    if (initialProfileError && initialProfileError.message.includes('duplicate key')) {
+      // 用户名重复，生成新用户名
+      finalUsername = `${username}_${Date.now()}`;
+      const { error: retryProfileError } = await supabaseAdmin
+        .from('user_profiles')
+        .insert({
+          user_id: userId,
+          username: finalUsername
+        });
+      profileError = retryProfileError;
+    } else {
+      profileError = initialProfileError;
+    }
 
     if (profileError) {
-      return reply.code(500).send({ error: '创建用户资料失败' });
+      console.error('创建用户资料失败:', profileError);
+      // 尝试使用upsert方式创建用户资料
+      const { error: upsertProfileError } = await supabaseAdmin
+        .from('user_profiles')
+        .upsert({
+          user_id: userId,
+          username: username
+        }, {
+          onConflict: 'user_id'
+        });
+      
+      if (upsertProfileError) {
+        console.error('upsert用户资料也失败:', upsertProfileError);
+        return reply.code(500).send({ error: '创建用户资料失败: ' + profileError.message });
+      } else {
+        console.log('使用upsert成功创建用户资料');
+      }
     }
 
     // 创建积分记录（新用户奖励100积分）
-    const { error: pointsError } = await supabaseAdmin
+    console.log('开始创建积分记录，用户ID:', userId);
+    
+    // 先尝试插入，如果失败则更新
+    const { data: existingPoints, error: checkError } = await supabaseAdmin
       .from('user_points')
-      .insert({
-        user_id: userId,
-        points: 100
-      });
+      .select('points')
+      .eq('user_id', userId)
+      .single();
 
-    if (pointsError) {
-      return reply.code(500).send({ error: '创建积分记录失败' });
+    if (checkError && !checkError.message.includes('No rows found')) {
+      console.error('检查积分记录失败:', checkError);
     }
+
+    let pointsError = null;
+    if (existingPoints) {
+      // 用户已有积分记录，更新积分
+      const { error: updateError } = await supabaseAdmin
+        .from('user_points')
+        .update({ points: 100 })
+        .eq('user_id', userId);
+      pointsError = updateError;
+      console.log('更新积分记录结果:', { updateError });
+    } else {
+      // 用户没有积分记录，创建新记录
+      const { error: insertError } = await supabaseAdmin
+        .from('user_points')
+        .insert({
+          user_id: userId,
+          points: 100
+        });
+      pointsError = insertError;
+      console.log('插入积分记录结果:', { insertError });
+    }
+    
+    if (pointsError) {
+      console.error('创建积分记录失败:', pointsError);
+      // 尝试使用upsert方式创建积分记录
+      const { error: upsertError } = await supabaseAdmin
+        .from('user_points')
+        .upsert({
+          user_id: userId,
+          points: 100
+        }, {
+          onConflict: 'user_id'
+        });
+      
+      if (upsertError) {
+        console.error('upsert积分记录也失败:', upsertError);
+        return reply.code(500).send({ error: '创建积分记录失败: ' + pointsError.message });
+      } else {
+        console.log('使用upsert成功创建积分记录');
+      }
+    }
+
+    // 验证积分记录是否创建成功
+    const { data: verifyPoints, error: verifyError } = await supabaseAdmin
+      .from('user_points')
+      .select('points')
+      .eq('user_id', userId)
+      .single();
+
+    const actualPoints = verifyPoints?.points || 0;
+    console.log('验证积分记录:', { userId, actualPoints, verifyError });
 
     return reply.send({
       success: true,
       userId: userId,
-      username: username,
-      points: 100,
-      message: '注册成功！您获得了100积分奖励！'
+      username: finalUsername,
+      points: actualPoints,
+      message: `注册成功！您获得了${actualPoints}积分奖励！`
     });
 
   } catch (error) {
@@ -355,6 +443,7 @@ app.post('/auth/login', async (req, reply) => {
     }
 
     const userId = authData.user.id;
+    console.log('登录验证的用户ID:', userId);
 
     // 获取用户信息
     const userInfo = await getUserInfo(userId);
