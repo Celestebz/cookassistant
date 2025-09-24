@@ -1,0 +1,34 @@
+{
+  "version": 2,
+  "functions": {
+    "backend/src/index.js": {
+      "maxDuration": 30
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/backend/src/index.js"
+    },
+    {
+      "source": "/jobs/(.*)",
+      "destination": "/backend/src/index.js"
+    },
+    {
+      "source": "/auth/(.*)",
+      "destination": "/backend/src/index.js"
+    },
+    {
+      "source": "/uploads/(.*)",
+      "destination": "/backend/src/index.js"
+    },
+    {
+      "source": "/health",
+      "destination": "/backend/src/index.js"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/webtest/index.html"
+    }
+  ]
+}

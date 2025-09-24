@@ -29,11 +29,11 @@
     },
     {
       "src": "/",
-      "dest": "webtest/index_with_auth.html"
+      "dest": "webtest/index.html"
     },
     {
       "src": "/(.*)",
-      "dest": "webtest/index_with_auth.html"
+      "dest": "webtest/index.html"
     }
   ]
 }
