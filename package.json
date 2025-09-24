@@ -2,7 +2,7 @@
   "name": "cookassistant",
   "version": "1.0.0",
   "description": "AI-powered cooking assistant with image analysis",
-  "main": "backend/src/index.js",
+  "main": "api/index.js",
   "scripts": {
     "start": "cd backend && node src/index.js",
     "dev": "cd backend && node --watch src/index.js",
