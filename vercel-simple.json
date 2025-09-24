@@ -1,0 +1,39 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "backend/src/index.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "backend/src/index.js"
+    },
+    {
+      "src": "/jobs/(.*)",
+      "dest": "backend/src/index.js"
+    },
+    {
+      "src": "/auth/(.*)",
+      "dest": "backend/src/index.js"
+    },
+    {
+      "src": "/uploads/(.*)",
+      "dest": "backend/src/index.js"
+    },
+    {
+      "src": "/health",
+      "dest": "backend/src/index.js"
+    },
+    {
+      "src": "/",
+      "dest": "webtest/index_with_auth.html"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "webtest/index_with_auth.html"
+    }
+  ]
+}
