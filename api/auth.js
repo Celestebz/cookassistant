@@ -4,7 +4,14 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.SUPABASE_URL || 'https://bqbtkaljxsmdcpedrerg.supabase.co';
 const supabaseKey = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxYnRrYWxqeHNtZGNwZWRyZXJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NDg0NDUsImV4cCI6MjA3NDAyNDQ0NX0._XIcJcSg_00b_iOs90QM5GNaKAg5_LEHGDrexDTFcMQ';
 // 使用服务角色密钥（优先），以确保服务端可绕过RLS执行写操作
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || supabaseKey;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxYnRrYWxqeHNtZGNwZWRyZXJnIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1ODQ0ODQ0NSwiZXhwIjoyMDc0MDI0NDQ1fQ.2dPg9lY8I28Zqci9X2lM8hc5vseLFO9Komz0z_xzTvM';
+
+console.log('🔧 Auth模块Supabase配置检查:', {
+  SUPABASE_URL: !!supabaseUrl,
+  SUPABASE_ANON_KEY: !!supabaseKey,
+  SUPABASE_SERVICE_ROLE_KEY: !!supabaseServiceKey,
+  usingFallback: !process.env.SUPABASE_URL
+});
 
 // 创建Supabase客户端
 const supabase = createClient(supabaseUrl, supabaseKey);

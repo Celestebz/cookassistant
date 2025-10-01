@@ -21,18 +21,17 @@ import {
 import { createClient } from '@supabase/supabase-js';
 
 // Supabase配置 - 确保在Vercel环境中正确获取环境变量
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_ANON_KEY;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
+const supabaseUrl = process.env.SUPABASE_URL || 'https://bqbtkaljxsmdcpedrerg.supabase.co';
+const supabaseKey = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxYnRrYWxqeHNtZGNwZWRyZXJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NDg0NDUsImV4cCI6MjA3NDAyNDQ0NX0._XIcJcSg_00b_iOs90QM5GNaKAg5_LEHGDrexDTFcMQ';
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxYnRrYWxqeHNtZGNwZWRyZXJnIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1ODQ0ODQ0NSwiZXhwIjoyMDc0MDI0NDQ1fQ.2dPg9lY8I28Zqci9X2lM8hc5vseLFO9Komz0z_xzTvM';
 
 // 验证环境变量是否存在
-if (!supabaseUrl || !supabaseKey) {
-  console.error('❌ Supabase环境变量未设置:', {
-    SUPABASE_URL: !!supabaseUrl,
-    SUPABASE_ANON_KEY: !!supabaseKey,
-    SUPABASE_SERVICE_ROLE_KEY: !!supabaseServiceKey
-  });
-}
+console.log('🔧 Supabase配置检查:', {
+  SUPABASE_URL: !!supabaseUrl,
+  SUPABASE_ANON_KEY: !!supabaseKey,
+  SUPABASE_SERVICE_ROLE_KEY: !!supabaseServiceKey,
+  usingFallback: !process.env.SUPABASE_URL
+});
 
 // 创建Supabase客户端
 const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
@@ -788,6 +787,107 @@ app.get('/health', async (req, reply) => {
     status: 'ok', 
     timestamp: new Date().toISOString() 
   });
+});
+
+// 测试Supabase连接和数据库操作
+app.get('/test-supabase', async (req, reply) => {
+  try {
+    console.log('🧪 开始测试Supabase连接...');
+    
+    // 测试1: 检查Supabase客户端
+    console.log('测试1: Supabase客户端配置');
+    const configTest = {
+      supabaseUrl: !!supabaseUrl,
+      supabaseKey: !!supabaseKey,
+      supabaseServiceKey: !!supabaseServiceKey
+    };
+    console.log('配置检查结果:', configTest);
+    
+    // 测试2: 测试数据库连接
+    console.log('测试2: 数据库连接测试');
+    const { data: testData, error: testError } = await supabaseAdmin
+      .from('user_points')
+      .select('count')
+      .limit(1);
+    
+    console.log('数据库连接测试结果:', { testData, testError });
+    
+    // 测试3: 测试用户表连接
+    console.log('测试3: 用户表连接测试');
+    const { data: profileTest, error: profileError } = await supabaseAdmin
+      .from('user_profiles')
+      .select('count')
+      .limit(1);
+    
+    console.log('用户表连接测试结果:', { profileTest, profileError });
+    
+    return reply.send({
+      status: 'ok',
+      config: configTest,
+      databaseTest: { success: !testError, error: testError?.message },
+      profileTest: { success: !profileError, error: profileError?.message },
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('Supabase测试失败:', error);
+    return reply.code(500).send({ 
+      status: 'error', 
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// 测试积分创建功能
+app.post('/test-create-points', async (req, reply) => {
+  try {
+    const { userId } = await req.body;
+    
+    if (!userId) {
+      return reply.code(400).send({ error: 'userId is required' });
+    }
+    
+    console.log('🧪 测试积分创建，用户ID:', userId);
+    
+    // 尝试创建积分记录
+    const { data: insertData, error: insertError } = await supabaseAdmin
+      .from('user_points')
+      .insert({
+        user_id: userId,
+        points: 100,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .select();
+    
+    console.log('积分创建结果:', { insertData, insertError });
+    
+    // 验证积分记录
+    const { data: verifyData, error: verifyError } = await supabaseAdmin
+      .from('user_points')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(1);
+    
+    console.log('积分验证结果:', { verifyData, verifyError });
+    
+    return reply.send({
+      status: 'ok',
+      insertResult: { success: !insertError, error: insertError?.message, data: insertData },
+      verifyResult: { success: !verifyError, error: verifyError?.message, data: verifyData },
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('积分创建测试失败:', error);
+    return reply.code(500).send({ 
+      status: 'error', 
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 // 添加根路径健康检查（Railway兼容性）
