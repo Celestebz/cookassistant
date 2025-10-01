@@ -20,10 +20,19 @@ import {
 // 导入Supabase客户端
 import { createClient } from '@supabase/supabase-js';
 
-// Supabase配置
-const supabaseUrl = process.env.SUPABASE_URL || 'https://bqbtkaljxsmdcpedrerg.supabase.co';
-const supabaseKey = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxYnRrYWxqeHNtZGNwZWRyZXJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NDg0NDUsImV4cCI6MjA3NDAyNDQ0NX0._XIcJcSg_00b_iOs90QM5GNaKAg5_LEHGDrexDTFcMQ';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || supabaseKey;
+// Supabase配置 - 确保在Vercel环境中正确获取环境变量
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_ANON_KEY;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
+
+// 验证环境变量是否存在
+if (!supabaseUrl || !supabaseKey) {
+  console.error('❌ Supabase环境变量未设置:', {
+    SUPABASE_URL: !!supabaseUrl,
+    SUPABASE_ANON_KEY: !!supabaseKey,
+    SUPABASE_SERVICE_ROLE_KEY: !!supabaseServiceKey
+  });
+}
 
 // 创建Supabase客户端
 const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
@@ -278,93 +287,39 @@ app.post('/jobs', { preHandler: authMiddleware }, async (req, reply) => {
   try {
     const ext = (file.filename?.split('.').pop() || 'jpg').toLowerCase();
     const fname = `in_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
-    
-    console.log('开始上传文件:', fname, '大小:', file.file?.bytesRead || 'unknown');
-    
-    // 先尝试创建bucket（如果不存在）
-    try {
-      const { data: buckets } = await supabaseAdmin.storage.listBuckets();
-      const uploadsBucket = buckets.find(bucket => bucket.name === 'uploads');
-      
-      if (!uploadsBucket) {
-        console.log('创建uploads bucket...');
-        const { data: newBucket, error: bucketError } = await supabaseAdmin.storage.createBucket('uploads', {
-          public: true,
-          allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
-          fileSizeLimit: 10485760 // 10MB
-        });
-        
-        if (bucketError) {
-          console.error('创建bucket失败:', bucketError);
-        } else {
-          console.log('bucket创建成功:', newBucket);
-        }
-      }
-    } catch (bucketErr) {
-      console.log('bucket检查/创建过程出错，继续尝试上传:', bucketErr.message);
-    }
-    
-    // 上传到Supabase Storage
+
+    console.log('开始处理文件:', fname, '扩展名:', ext, 'MIME类型:', file.mimetype);
+
+    // 获取文件buffer
     const fileBuffer = await file.toBuffer();
     console.log('文件buffer大小:', fileBuffer.length);
-    
-    const { data, error } = await supabaseAdmin.storage
-      .from('uploads')
-      .upload(fname, fileBuffer, {
-        contentType: file.mimetype || 'image/jpeg',
-        upsert: false
-      });
 
-    if (error) {
-      console.error('Supabase Storage上传失败:', error);
-      // 尝试使用base64直接处理，不依赖Storage
-      console.log('尝试使用base64直接处理...');
-      const base64 = fileBuffer.toString('base64');
-      const mimeType = file.mimetype || 'image/jpeg';
-      const dataUrl = `data:${mimeType};base64,${base64}`;
-      
-      const jobId = 'job_' + nanoid(8);
-      const job = { 
-        id: jobId, 
-        status: 'queued', 
-        inputImageUrl: dataUrl, // 直接使用base64
-        userId: req.user.id,
-        userPointsBeforeJob: pointsCheck.currentPoints,
-        createdAt: now() 
-      };
-      jobs.set(jobId, job);
-      processJob(jobId).catch(() => {});
-      return reply.code(201).send({ 
-        id: jobId, 
-        status: job.status, 
-        createdAt: job.createdAt,
-        userPoints: pointsCheck.currentPoints,
-        message: '任务已创建，将消耗10积分进行AI分析'
-      });
-    }
+    // 直接转换为base64，不依赖Supabase Storage（避免Vercel环境问题）
+    console.log('转换为base64格式...');
+    const base64 = fileBuffer.toString('base64');
+    const mimeType = file.mimetype || `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+    const dataUrl = `data:${mimeType};base64,${base64}`;
 
-    // 获取公开URL
-    const { data: urlData } = supabaseAdmin.storage
-      .from('uploads')
-      .getPublicUrl(fname);
-    
-    const inputImageUrl = urlData.publicUrl;
-    console.log('图片上传成功，URL:', inputImageUrl);
-    
+    console.log('✅ 图片已转换为base64，大小:', fileBuffer.length, 'bytes');
+    console.log('📤 准备创建任务...');
+
     const jobId = 'job_' + nanoid(8);
-    const job = { 
-      id: jobId, 
-      status: 'queued', 
-      inputImageUrl, 
+    const job = {
+      id: jobId,
+      status: 'queued',
+      inputImageUrl: dataUrl, // 直接使用base64 data URL
       userId: req.user.id, // 记录用户ID用于积分扣除
       userPointsBeforeJob: pointsCheck.currentPoints, // 记录任务开始前的积分
-      createdAt: now() 
+      createdAt: now()
     };
+
+    console.log('创建任务:', jobId, '用户ID:', req.user.id);
     jobs.set(jobId, job);
     processJob(jobId).catch(() => {});
-    return reply.code(201).send({ 
-      id: jobId, 
-      status: job.status, 
+
+    return reply.code(201).send({
+      id: jobId,
+      status: job.status,
       createdAt: job.createdAt,
       userPoints: pointsCheck.currentPoints,
       message: '任务已创建，将消耗10积分进行AI分析'
@@ -653,13 +608,20 @@ app.post('/auth/logout', async (req, reply) => {
 // 获取用户信息
 app.get('/auth/user', { preHandler: authMiddleware }, async (req, reply) => {
   try {
+    console.log('开始获取用户信息，用户ID:', req.user.id);
     const userInfo = await getUserInfo(req.user.id);
     if (userInfo.error) {
-      return reply.code(500).send({ error: '获取用户信息失败' });
+      console.error('getUserInfo返回错误:', userInfo.error);
+      return reply.code(500).send({ error: '获取用户信息失败', details: userInfo.error });
     }
-    
-    console.log('返回用户信息:', { id: req.user.id, username: userInfo.username, points: userInfo.points });
-    
+
+    console.log('用户信息获取成功:', {
+      id: req.user.id,
+      username: userInfo.username,
+      points: userInfo.points,
+      error: userInfo.error
+    });
+
     return reply.send({
       id: req.user.id,
       username: userInfo.username,
@@ -667,8 +629,9 @@ app.get('/auth/user', { preHandler: authMiddleware }, async (req, reply) => {
       message: `当前积分：${userInfo.points}`
     });
   } catch (error) {
+    console.error('获取用户信息异常:', error);
     app.log.error({ err: error }, '获取用户信息失败');
-    return reply.code(500).send({ error: '服务器错误' });
+    return reply.code(500).send({ error: '服务器错误', details: error.message });
   }
 });
 
