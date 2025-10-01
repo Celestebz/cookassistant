@@ -550,6 +550,7 @@ app.post('/auth/login', async (req, reply) => {
       userId: userId,
       username: displayUsername,
       points: userPoints,
+      token: authData.session.access_token,
       message: `登录成功！当前积分：${userPoints}`
     });
 

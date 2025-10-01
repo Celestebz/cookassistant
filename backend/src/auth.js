@@ -10,6 +10,27 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.
 const supabase = createClient(supabaseUrl, supabaseKey);
 const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
+// 重试函数
+async function withRetry(fn, maxRetries = 3, delay = 1000) {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await fn();
+    } catch (error) {
+      console.log(`尝试 ${i + 1}/${maxRetries} 失败:`, error.message);
+      
+      // 如果是网络错误且还有重试次数，则等待后重试
+      if (i < maxRetries - 1 && (error.code === 'ECONNRESET' || error.code === 'ECONNREFUSED' || error.message.includes('fetch failed'))) {
+        console.log(`等待 ${delay}ms 后重试...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        delay *= 2; // 指数退避
+        continue;
+      }
+      
+      throw error;
+    }
+  }
+}
+
 // 用户认证中间件
 export async function authMiddleware(req, reply) {
   const token = req.headers.authorization?.replace('Bearer ', '');
@@ -21,8 +42,10 @@ export async function authMiddleware(req, reply) {
   try {
     console.log('验证令牌:', token.substring(0, 20) + '...');
     
-    // 验证JWT令牌
-    const { data: { user }, error } = await supabase.auth.getUser(token);
+    // 使用重试机制验证JWT令牌
+    const { data: { user }, error } = await withRetry(async () => {
+      return await supabase.auth.getUser(token);
+    });
     
     console.log('认证结果:', { user: user?.id, error });
     
@@ -35,7 +58,7 @@ export async function authMiddleware(req, reply) {
     return;
   } catch (error) {
     console.error('认证中间件错误:', error);
-    return reply.code(401).send({ error: '认证失败' });
+    return reply.code(401).send({ error: '认证失败，请稍后重试' });
   }
 }
 
@@ -44,24 +67,28 @@ export async function getUserInfo(userId) {
   try {
     console.log('获取用户信息，用户ID:', userId);
     
-    // 获取用户积分（容忍重复，按最新记录获取）
-    const { data: pointsRows, error: pointsError } = await supabaseAdmin
-      .from('user_points')
-      .select('points, updated_at')
-      .eq('user_id', userId)
-      .order('updated_at', { ascending: false })
-      .limit(1);
+    // 获取用户积分（容忍重复，按最新记录获取）- 使用重试机制
+    const { data: pointsRows, error: pointsError } = await withRetry(async () => {
+      return await supabaseAdmin
+        .from('user_points')
+        .select('points, updated_at')
+        .eq('user_id', userId)
+        .order('updated_at', { ascending: false })
+        .limit(1);
+    });
     const pointsData = Array.isArray(pointsRows) ? pointsRows[0] : null;
 
     console.log('积分查询结果:', { pointsData, pointsError });
 
-    // 获取用户资料（容忍重复，按最新记录获取）
-    const { data: profileRows, error: profileError } = await supabaseAdmin
-      .from('user_profiles')
-      .select('username, updated_at')
-      .eq('user_id', userId)
-      .order('updated_at', { ascending: false })
-      .limit(1);
+    // 获取用户资料（容忍重复，按最新记录获取）- 使用重试机制
+    const { data: profileRows, error: profileError } = await withRetry(async () => {
+      return await supabaseAdmin
+        .from('user_profiles')
+        .select('username, updated_at')
+        .eq('user_id', userId)
+        .order('updated_at', { ascending: false })
+        .limit(1);
+    });
     const profileData = Array.isArray(profileRows) ? profileRows[0] : null;
 
     console.log('用户资料查询结果:', { profileData, profileError });
@@ -98,29 +125,33 @@ export async function getUserInfo(userId) {
     let userPoints = pointsData?.points;
     if (userPoints === undefined || userPoints === null) {
       console.log('用户没有积分记录，创建默认积分记录');
-      // 使用upsert确保积分记录创建成功（兼容新旧数据库）
-      const { error: createPointsError } = await supabaseAdmin
-        .from('user_points')
-        .upsert({
-          user_id: userId,
-          points: 100,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }, {
-          onConflict: 'user_id'
-        });
-
-      if (createPointsError) {
-        console.error('创建积分记录失败:', createPointsError);
-        // 尝试直接插入作为备选方案
-        const { error: insertError } = await supabaseAdmin
+      // 使用upsert确保积分记录创建成功（兼容新旧数据库）- 使用重试机制
+      const { error: createPointsError } = await withRetry(async () => {
+        return await supabaseAdmin
           .from('user_points')
-          .insert({
+          .upsert({
             user_id: userId,
             points: 100,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
+          }, {
+            onConflict: 'user_id'
           });
+      });
+
+      if (createPointsError) {
+        console.error('创建积分记录失败:', createPointsError);
+        // 尝试直接插入作为备选方案 - 使用重试机制
+        const { error: insertError } = await withRetry(async () => {
+          return await supabaseAdmin
+            .from('user_points')
+            .insert({
+              user_id: userId,
+              points: 100,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            });
+        });
 
         if (insertError) {
           console.error('插入积分记录也失败:', insertError);
@@ -147,13 +178,15 @@ export async function getUserInfo(userId) {
 // 更新用户积分
 export async function updateUserPoints(userId, pointsChange) {
   try {
-    // 先获取当前积分（按最新记录）
-    const { data: pointsRows } = await supabaseAdmin
-      .from('user_points')
-      .select('points, updated_at')
-      .eq('user_id', userId)
-      .order('updated_at', { ascending: false })
-      .limit(1);
+    // 先获取当前积分（按最新记录）- 使用重试机制
+    const { data: pointsRows } = await withRetry(async () => {
+      return await supabaseAdmin
+        .from('user_points')
+        .select('points, updated_at')
+        .eq('user_id', userId)
+        .order('updated_at', { ascending: false })
+        .limit(1);
+    });
     const currentPoints = Array.isArray(pointsRows) && pointsRows.length > 0 ? (pointsRows[0].points || 0) : 100;
     
     // 计算新积分
@@ -173,11 +206,13 @@ export async function updateUserPoints(userId, pointsChange) {
     // 先尝试更新；如果没有更新任何行，则插入
     console.log('尝试更新积分:', { userId, currentPoints, pointsChange, newPoints });
     
-    const { data: updatedRows, error: updateError } = await supabaseAdmin
-      .from('user_points')
-      .update({ points: newPoints, updated_at: new Date().toISOString() })
-      .eq('user_id', userId)
-      .select('user_id');
+    const { data: updatedRows, error: updateError } = await withRetry(async () => {
+      return await supabaseAdmin
+        .from('user_points')
+        .update({ points: newPoints, updated_at: new Date().toISOString() })
+        .eq('user_id', userId)
+        .select('user_id');
+    });
 
     if (updateError) {
       console.error('积分更新失败:', updateError);
@@ -188,14 +223,16 @@ export async function updateUserPoints(userId, pointsChange) {
 
     if (!updatedRows || updatedRows.length === 0) {
       console.log('没有行被更新，尝试插入新记录');
-      const { error: insertError } = await supabaseAdmin
-        .from('user_points')
-        .insert({
-          user_id: userId,
-          points: newPoints,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        });
+      const { error: insertError } = await withRetry(async () => {
+        return await supabaseAdmin
+          .from('user_points')
+          .insert({
+            user_id: userId,
+            points: newPoints,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          });
+      });
       if (insertError) {
         console.error('积分插入失败:', insertError);
         return { success: false, error: '积分插入失败: ' + insertError.message };
@@ -219,13 +256,15 @@ export async function checkUserPoints(userId, requiredPoints) {
   try {
     console.log('检查用户积分，用户ID:', userId, '需要积分:', requiredPoints);
     
-    // 使用admin客户端查询积分（按最新记录获取，避免重复记录导致错误）
-    const { data: rows, error } = await supabaseAdmin
-      .from('user_points')
-      .select('points, updated_at')
-      .eq('user_id', userId)
-      .order('updated_at', { ascending: false })
-      .limit(1);
+    // 使用admin客户端查询积分（按最新记录获取，避免重复记录导致错误）- 使用重试机制
+    const { data: rows, error } = await withRetry(async () => {
+      return await supabaseAdmin
+        .from('user_points')
+        .select('points, updated_at')
+        .eq('user_id', userId)
+        .order('updated_at', { ascending: false })
+        .limit(1);
+    });
 
     if (error) {
       console.error('积分查询失败:', error);
