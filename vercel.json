@@ -4,6 +4,9 @@
   "functions": {
     "api/index.cjs": {
       "maxDuration": 30
+    },
+    "api/test.cjs": {
+      "maxDuration": 10
     }
   },
   "rewrites": [
@@ -42,6 +45,10 @@
     {
       "source": "/test-upload",
       "destination": "/api/index.cjs"
+    },
+    {
+      "source": "/test",
+      "destination": "/api/test.cjs"
     },
     {
       "source": "/",
