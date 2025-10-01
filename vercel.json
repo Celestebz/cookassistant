@@ -2,46 +2,46 @@
   "version": 2,
   "outputDirectory": "public",
   "functions": {
-    "api/index.js": {
+    "api/index.cjs": {
       "maxDuration": 30
     }
   },
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "/api/index"
+      "destination": "/api/index.cjs"
     },
     {
       "source": "/jobs",
-      "destination": "/api/index"
+      "destination": "/api/index.cjs"
     },
     {
       "source": "/jobs/(.*)",
-      "destination": "/api/index"
+      "destination": "/api/index.cjs"
     },
     {
       "source": "/auth/(.*)",
-      "destination": "/api/index"
+      "destination": "/api/index.cjs"
     },
     {
       "source": "/uploads/(.*)",
-      "destination": "/api/index"
+      "destination": "/api/index.cjs"
     },
     {
       "source": "/health",
-      "destination": "/api/index"
+      "destination": "/api/index.cjs"
     },
     {
       "source": "/test-supabase",
-      "destination": "/api/index"
+      "destination": "/api/index.cjs"
     },
     {
       "source": "/test-create-points",
-      "destination": "/api/index"
+      "destination": "/api/index.cjs"
     },
     {
       "source": "/test-upload",
-      "destination": "/api/index"
+      "destination": "/api/index.cjs"
     },
     {
       "source": "/",
