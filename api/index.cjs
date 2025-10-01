@@ -35,12 +35,12 @@ const app = Fastify({
 });
 
 // 注册插件
-await app.register(cors, {
+app.register(cors, {
   origin: true,
   credentials: true
 });
 
-await app.register(multipart, {
+app.register(multipart, {
   limits: {
     fileSize: 10 * 1024 * 1024 // 10MB
   }
