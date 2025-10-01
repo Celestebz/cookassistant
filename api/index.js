@@ -41,12 +41,10 @@ await app.register(multipart, {
     files: 1
   }
 });
-// serve static files
+// serve public files (for Vercel static hosting)
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(__dirname, '../public');
-const uploadsDir = path.join(__dirname, '../uploads');
 
-// serve public files
 app.get('/public/*', async (req, reply) => {
   const rel = req.params['*'];
   const p = path.join(publicDir, rel);
@@ -64,16 +62,6 @@ app.get('/public/*', async (req, reply) => {
     return reply.send(fs.readFileSync(p));
   }
   return reply.code(404).send({ error: 'File not found' });
-});
-
-// serve uploads statically
-fs.mkdirSync(uploadsDir, { recursive: true });
-app.get('/uploads/*', async (req, reply) => {
-  const rel = req.params['*'];
-  const p = path.join(uploadsDir, rel);
-  if (!p.startsWith(uploadsDir)) return reply.code(403).send();
-  if (!fs.existsSync(p)) return reply.code(404).send();
-  return reply.send(fs.createReadStream(p));
 });
 
 const jobs = new Map();
@@ -196,14 +184,20 @@ async function processJob(jobId) {
     
     // Convert image to base64 format for API call
     console.log('🔄 开始处理图片，转换为base64格式...');
-    const imagePath = path.join(uploadsDir, path.basename(imageUrl));
-    console.log('图片路径:', imagePath);
-    if (fs.existsSync(imagePath)) {
-      const imageBuffer = await fs.promises.readFile(imagePath);
-      const base64 = imageBuffer.toString('base64');
-      const mimeType = imagePath.endsWith('.png') ? 'image/png' : 'image/jpeg';
+    console.log('图片URL:', imageUrl);
+    
+    try {
+      // 从Supabase Storage下载图片
+      const response = await fetch(imageUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch image: ${response.status}`);
+      }
+      
+      const imageBuffer = await response.arrayBuffer();
+      const base64 = Buffer.from(imageBuffer).toString('base64');
+      const mimeType = imageUrl.includes('.png') ? 'image/png' : 'image/jpeg';
       const dataUrl = `data:${mimeType};base64,${base64}`;
-      console.log('✅ 图片已转换为base64，大小:', imageBuffer.length, 'bytes');
+      console.log('✅ 图片已转换为base64，大小:', imageBuffer.byteLength, 'bytes');
       console.log('📤 调用Doubao API...');
       
       stepsText = await generateRecipeSteps({
@@ -211,8 +205,9 @@ async function processJob(jobId) {
         prompt: buildStepsPrompt()
       });
       console.log('✅ Doubao API调用成功，返回结果长度:', stepsText.length);
-    } else {
-      throw new Error('Image file not found');
+    } catch (error) {
+      console.error('图片处理失败:', error);
+      throw new Error(`Image processing failed: ${error.message}`);
     }
     // 解析AI返回的完整信息
     const parsedInfo = parseRecipeInfo(stepsText);
@@ -270,30 +265,55 @@ app.post('/jobs', { preHandler: authMiddleware }, async (req, reply) => {
 
   const file = await req.file();
   if (!file) return reply.code(400).send({ error: 'image file is required' });
-  const ext = (file.filename?.split('.').pop() || 'jpg').toLowerCase();
-  const fname = `in_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
-  const fpath = path.join(uploadsDir, fname);
-  await fs.promises.writeFile(fpath, await file.toBuffer());
-  const base = process.env.PUBLIC_BASE_URL || `${req.protocol}://${req.headers.host}`;
-  const inputImageUrl = `${base}/uploads/${fname}`;
-  const jobId = 'job_' + nanoid(8);
-  const job = { 
-    id: jobId, 
-    status: 'queued', 
-    inputImageUrl, 
-    userId: req.user.id, // 记录用户ID用于积分扣除
-    userPointsBeforeJob: pointsCheck.currentPoints, // 记录任务开始前的积分
-    createdAt: now() 
-  };
-  jobs.set(jobId, job);
-  processJob(jobId).catch(() => {});
-  return reply.code(201).send({ 
-    id: jobId, 
-    status: job.status, 
-    createdAt: job.createdAt,
-    userPoints: pointsCheck.currentPoints,
-    message: '任务已创建，将消耗10积分进行AI分析'
-  });
+  
+  try {
+    const ext = (file.filename?.split('.').pop() || 'jpg').toLowerCase();
+    const fname = `in_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+    
+    // 上传到Supabase Storage
+    const fileBuffer = await file.toBuffer();
+    const { data, error } = await supabaseAdmin.storage
+      .from('uploads')
+      .upload(fname, fileBuffer, {
+        contentType: file.mimetype,
+        upsert: false
+      });
+
+    if (error) {
+      console.error('Supabase Storage上传失败:', error);
+      return reply.code(500).send({ error: '图片上传失败，请重试' });
+    }
+
+    // 获取公开URL
+    const { data: urlData } = supabaseAdmin.storage
+      .from('uploads')
+      .getPublicUrl(fname);
+    
+    const inputImageUrl = urlData.publicUrl;
+    console.log('图片上传成功，URL:', inputImageUrl);
+    
+    const jobId = 'job_' + nanoid(8);
+    const job = { 
+      id: jobId, 
+      status: 'queued', 
+      inputImageUrl, 
+      userId: req.user.id, // 记录用户ID用于积分扣除
+      userPointsBeforeJob: pointsCheck.currentPoints, // 记录任务开始前的积分
+      createdAt: now() 
+    };
+    jobs.set(jobId, job);
+    processJob(jobId).catch(() => {});
+    return reply.code(201).send({ 
+      id: jobId, 
+      status: job.status, 
+      createdAt: job.createdAt,
+      userPoints: pointsCheck.currentPoints,
+      message: '任务已创建，将消耗10积分进行AI分析'
+    });
+  } catch (error) {
+    console.error('文件处理错误:', error);
+    return reply.code(500).send({ error: '图片处理失败，请重试' });
+  }
 });
 
 app.get('/jobs/:id', async (req, reply) => {
