@@ -130,31 +130,133 @@
         .recipe-display {
             display: none;
             margin-top: 2rem;
+            background: white;
+            border-radius: 15px;
+            padding: 2rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .recipe-header {
+            margin-bottom: 1rem;
+        }
+
+        .recipe-image-section {
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+
+        .recipe-image-container {
+            max-width: 500px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .recipe-image {
+            width: 100%;
+            height: 300px;
+            object-fit: cover;
+            border-radius: 12px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            transition: transform 0.3s ease;
+        }
+
+        .recipe-image:hover {
+            transform: scale(1.02);
+        }
+
+        .recipe-info {
+            flex: 1;
+        }
+
+        .image-loading {
+            width: 100%;
+            height: 300px;
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .image-error {
+            width: 100%;
+            height: 300px;
+            background: #f8f9fa;
+            border: 2px dashed #dee2e6;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #6c757d;
+        }
+
+        .image-error-icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        @media (max-width: 768px) {
+            .recipe-image-container {
+                max-width: 100%;
+            }
+            
+            .recipe-image {
+                height: 250px;
+            }
+            
+            .image-loading,
+            .image-error {
+                height: 250px;
+            }
         }
 
         .recipe-title {
             font-size: 2rem;
             color: #333;
-            margin-bottom: 1rem;
-            text-align: center;
+            margin-bottom: 0.5rem;
+            text-align: left;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .recipe-title::before {
+            content: "🍽️";
+            font-size: 1.5rem;
         }
 
         .recipe-content {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 2rem;
+            gap: 1.5rem;
         }
 
         .ingredients-section, .steps-section {
             background: #f8f9fa;
-            padding: 1.5rem;
+            padding: 1.25rem;
             border-radius: 15px;
         }
 
         .section-title {
             font-size: 1.3rem;
             color: #333;
-            margin-bottom: 1rem;
+            margin-bottom: 0.75rem;
             display: flex;
             align-items: center;
             gap: 0.5rem;
@@ -165,8 +267,9 @@
         }
 
         .ingredient-item {
-            padding: 0.5rem 0;
+            padding: 0.4rem 0;
             border-bottom: 1px solid #eee;
+            font-size: 0.95rem;
         }
 
         .step-list {
@@ -174,7 +277,7 @@
         }
 
         .step-item {
-            padding: 1rem 0;
+            padding: 0.8rem 0;
             border-bottom: 1px solid #eee;
             display: flex;
             gap: 1rem;
@@ -195,7 +298,8 @@
 
         .step-text {
             flex: 1;
-            line-height: 1.6;
+            line-height: 1.5;
+            font-size: 0.95rem;
         }
 
         .loading {
@@ -301,11 +405,17 @@
             <!-- 上传区域 -->
             <div id="upload-section" class="hidden">
                 <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
-                    <div class="upload-icon">
-                        <iconify-icon icon="mdi:cloud-upload"></iconify-icon>
+                    <div id="uploadPreview" style="display: none;">
+                        <img id="previewImage" style="max-width: 100%; max-height: 200px; border-radius: 8px; margin-bottom: 1rem;">
+                        <div style="color: #666; font-size: 0.9rem;">点击重新选择图片</div>
                     </div>
-                    <div class="upload-text">点击或拖拽上传图片</div>
-                    <div class="upload-hint">支持 JPG、PNG、WEBP 格式，最大 10MB</div>
+                    <div id="uploadPlaceholder">
+                        <div class="upload-icon">
+                            <iconify-icon icon="mdi:cloud-upload"></iconify-icon>
+                        </div>
+                        <div class="upload-text">点击或拖拽上传图片</div>
+                        <div class="upload-hint">支持 JPG、PNG、WEBP 格式，最大 10MB</div>
+                    </div>
                 </div>
                 <input type="file" id="fileInput" accept="image/*" style="display: none;">
                 
@@ -325,7 +435,19 @@
 
             <!-- 菜谱显示 -->
             <div id="recipe-section" class="recipe-display">
-                <div class="recipe-title" id="recipeTitle"></div>
+                <div class="recipe-header">
+                    <div class="recipe-info">
+                        <div class="recipe-title" id="recipeTitle"></div>
+                    </div>
+                </div>
+                <div class="recipe-image-section">
+                    <div id="recipeImageContainer">
+                        <div class="image-loading" id="imageLoading">
+                            <iconify-icon icon="mdi:loading" style="animation: spin 1s linear infinite;"></iconify-icon>
+                            正在加载图片...
+                        </div>
+                    </div>
+                </div>
                 <div class="recipe-content">
                     <div class="ingredients-section">
                         <div class="section-title">
@@ -568,6 +690,9 @@
                 return
             }
 
+            // 显示图片预览
+            showImagePreview(file)
+
             // 检查积分是否足够
             const pointsCheck = await checkPoints(10)
             if (!pointsCheck.hasEnough) {
@@ -708,6 +833,12 @@
                         
                         // 显示结果
                         displayRecipe(job.recipe)
+                        
+                        // 显示上传的图片
+                        if (job.inputImageUrl) {
+                            displayRecipeImage(job.inputImageUrl)
+                        }
+                        
                         hideLoading()
                     } else if (job.status === 'failed') {
                         throw new Error(job.error?.message || '处理失败')
@@ -749,6 +880,32 @@
             }
         }
 
+        // 显示图片预览
+        function showImagePreview(file) {
+            const reader = new FileReader()
+            reader.onload = function(e) {
+                const previewImage = document.getElementById('previewImage')
+                const uploadPreview = document.getElementById('uploadPreview')
+                const uploadPlaceholder = document.getElementById('uploadPlaceholder')
+                
+                previewImage.src = e.target.result
+                uploadPreview.style.display = 'block'
+                uploadPlaceholder.style.display = 'none'
+            }
+            reader.readAsDataURL(file)
+        }
+
+        // 重置上传区域
+        function resetUploadArea() {
+            const uploadPreview = document.getElementById('uploadPreview')
+            const uploadPlaceholder = document.getElementById('uploadPlaceholder')
+            const fileInput = document.getElementById('fileInput')
+            
+            uploadPreview.style.display = 'none'
+            uploadPlaceholder.style.display = 'block'
+            fileInput.value = ''
+        }
+
         // 显示菜谱
         function displayRecipe(recipe) {
             document.getElementById('recipeTitle').textContent = recipe.name || '识别菜品'
@@ -779,6 +936,47 @@
             document.getElementById('recipe-section').style.display = 'block'
         }
 
+        // 显示菜谱图片
+        function displayRecipeImage(imageUrl) {
+            const imageContainer = document.getElementById('recipeImageContainer')
+            const imageLoading = document.getElementById('imageLoading')
+            
+            if (!imageUrl) {
+                // 显示错误状态
+                imageContainer.innerHTML = `
+                    <div class="image-error">
+                        <div class="image-error-icon">📷</div>
+                        <div>图片加载失败</div>
+                    </div>
+                `
+                return
+            }
+
+            // 创建图片元素
+            const img = document.createElement('img')
+            img.className = 'recipe-image'
+            img.alt = '菜品图片'
+            
+            // 图片加载成功
+            img.onload = function() {
+                imageContainer.innerHTML = ''
+                imageContainer.appendChild(img)
+            }
+            
+            // 图片加载失败
+            img.onerror = function() {
+                imageContainer.innerHTML = `
+                    <div class="image-error">
+                        <div class="image-error-icon">❌</div>
+                        <div>图片加载失败</div>
+                    </div>
+                `
+            }
+            
+            // 开始加载图片
+            img.src = imageUrl
+        }
+
         // 显示加载状态
         function showLoading() {
             document.getElementById('loading-section').classList.remove('hidden')
@@ -790,6 +988,8 @@
         function hideLoading() {
             document.getElementById('loading-section').classList.add('hidden')
             document.getElementById('upload-section').classList.remove('hidden')
+            // 重置上传区域，准备下次上传
+            resetUploadArea()
         }
 
         // 显示错误
