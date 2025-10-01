@@ -4,59 +4,52 @@
   "functions": {
     "api/index.cjs": {
       "maxDuration": 30
-    },
-    "api/test.cjs": {
-      "maxDuration": 10
     }
   },
-  "rewrites": [
+  "routes": [
     {
-      "source": "/api/(.*)",
-      "destination": "/api/index.cjs"
+      "src": "/api/(.*)",
+      "dest": "/api/index.cjs"
     },
     {
-      "source": "/jobs",
-      "destination": "/api/index.cjs"
+      "src": "/jobs",
+      "dest": "/api/index.cjs"
     },
     {
-      "source": "/jobs/(.*)",
-      "destination": "/api/index.cjs"
+      "src": "/jobs/(.*)",
+      "dest": "/api/index.cjs"
     },
     {
-      "source": "/auth/(.*)",
-      "destination": "/api/index.cjs"
+      "src": "/auth/(.*)",
+      "dest": "/api/index.cjs"
     },
     {
-      "source": "/uploads/(.*)",
-      "destination": "/api/index.cjs"
+      "src": "/uploads/(.*)",
+      "dest": "/api/index.cjs"
     },
     {
-      "source": "/health",
-      "destination": "/api/index.cjs"
+      "src": "/health",
+      "dest": "/api/index.cjs"
     },
     {
-      "source": "/test-supabase",
-      "destination": "/api/index.cjs"
+      "src": "/test-supabase",
+      "dest": "/api/index.cjs"
     },
     {
-      "source": "/test-create-points",
-      "destination": "/api/index.cjs"
+      "src": "/test-create-points",
+      "dest": "/api/index.cjs"
     },
     {
-      "source": "/test-upload",
-      "destination": "/api/index.cjs"
+      "src": "/test-upload",
+      "dest": "/api/index.cjs"
     },
     {
-      "source": "/test",
-      "destination": "/api/test.cjs"
+      "src": "/",
+      "dest": "/index_with_auth.html"
     },
     {
-      "source": "/",
-      "destination": "/index_with_auth.html"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/index_with_auth.html"
+      "src": "/(.*)",
+      "dest": "/index_with_auth.html"
     }
   ]
 }
