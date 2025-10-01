@@ -398,6 +398,9 @@
             console.error('Supabase初始化失败:', error)
         }
 
+        // API 基地址（兼容 file:// 打开和 http:// 服务）
+        const API_BASE = (location.protocol.startsWith('http') ? `${location.protocol}//${location.host}` : 'http://localhost:8787')
+
         // 全局变量
         let currentUser = null
         let userPoints = 0
@@ -454,7 +457,7 @@
                 console.log('当前session用户ID:', session.user.id)
                 console.log('使用access_token:', session.access_token.substring(0, 20) + '...')
 
-                const response = await fetch('/auth/user', {
+                const response = await fetch(`${API_BASE}/auth/user`, {
                     method: 'GET',
                     headers: {
                         'Authorization': `Bearer ${session.access_token}`,
@@ -468,10 +471,15 @@
                     const data = await response.json()
                     console.log('用户信息API返回数据:', data)
                     userPoints = Math.max(0, data.points || 0) // 确保积分不为负
+                    const username = data.username || '用户'
+                    
+                    console.log('准备更新DOM - 用户名:', username, '积分:', userPoints)
+                    
+                    // 更新DOM
                     document.getElementById('user-points').textContent = userPoints
-                    document.getElementById('user-username').textContent = data.username || '用户'
-                    console.log('用户数据加载成功:', { username: data.username, points: userPoints })
-                    console.log('设置用户名到DOM:', data.username)
+                    document.getElementById('user-username').textContent = username
+                    
+                    console.log('DOM已更新 - 用户名:', document.getElementById('user-username').textContent, '积分:', document.getElementById('user-points').textContent)
                     
                     // 如果积分为0，显示提醒
                     if (userPoints === 0) {
@@ -503,25 +511,6 @@
             
             console.log('显示用户界面，当前积分:', userPoints)
             console.log('当前用户名:', document.getElementById('user-username').textContent)
-            
-            // 强制设置用户名（如果当前显示的是默认值）
-            if (document.getElementById('user-username').textContent === '用户') {
-                console.log('检测到默认用户名，尝试从session获取')
-                // 尝试从当前用户信息获取用户名
-                if (currentUser && currentUser.email) {
-                    const username = currentUser.email.split('@')[0]
-                    console.log('从邮箱提取用户名:', username)
-                    document.getElementById('user-username').textContent = username
-                }
-            }
-            
-            // 确保积分显示正确
-            if (userPoints === 0 || userPoints === undefined) {
-                console.log('积分显示异常，重新加载用户数据')
-                setTimeout(() => {
-                    loadUserData()
-                }, 500)
-            }
         }
 
         // 显示认证界面
@@ -602,7 +591,7 @@
                 const formData = new FormData()
                 formData.append('image', file)
                 
-                const response = await fetch('/jobs', {
+                const response = await fetch(`${API_BASE}/jobs`, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${session.access_token}`
@@ -640,7 +629,7 @@
 
                 console.log('检查积分，需要:', requiredPoints, '用户ID:', session.user.id)
 
-                const response = await fetch('/auth/check-points', {
+                const response = await fetch(`${API_BASE}/auth/check-points`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -678,9 +667,11 @@
                 </div>
             `
             
-            // 插入到页面顶部
-            const mainContent = document.getElementById('main-content')
-            mainContent.insertBefore(alertDiv, mainContent.firstChild)
+            // 插入到页面顶部（修复：使用正确的选择器）
+            const mainContent = document.querySelector('.main-content')
+            if (mainContent) {
+                mainContent.insertBefore(alertDiv, mainContent.firstChild)
+            }
             
             // 禁用上传功能
             const uploadButton = document.querySelector('input[type="file"]')
@@ -704,7 +695,7 @@
 
             const poll = async () => {
                 try {
-                    const response = await fetch(`/jobs/${jobId}`)
+                    const response = await fetch(`${API_BASE}/jobs/${jobId}`)
                     if (!response.ok) {
                         throw new Error('获取任务状态失败')
                     }
@@ -712,10 +703,7 @@
                     const job = await response.json()
                     
                     if (job.status === 'succeeded') {
-                        // 消费积分
-                        await consumePoints(10)
-                        
-                        // 刷新用户数据以同步积分
+                        // 积分扣除由后端完成，这里只刷新数据，避免重复扣除
                         await loadUserData()
                         
                         // 显示结果
@@ -742,7 +730,7 @@
         // 消费积分
         async function consumePoints(points) {
             try {
-                const response = await fetch('/auth/consume-points', {
+                const response = await fetch(`${API_BASE}/auth/consume-points`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -884,12 +872,6 @@
                         hideModal('loginModal')
                     }, 1000)
                 }, 500)
-                
-                // 强制设置用户名（从登录响应中获取）
-                if (data.username && data.username !== '用户') {
-                    console.log('从登录响应设置用户名:', data.username)
-                    document.getElementById('user-username').textContent = data.username
-                }
             } catch (error) {
                 showModalError('loginError', '登录失败，请重试')
             }

@@ -1,11 +1,5 @@
-#!/usr/bin/env node
-
-/**
- * 快速修复积分系统
- * 为现有用户手动添加积分记录
- */
-
-const { createClient } = require('@supabase/supabase-js');
+// 快速修复用户积分系统
+import { createClient } from '@supabase/supabase-js';
 
 // Supabase配置
 const supabaseUrl = 'https://bqbtkaljxsmdcpedrerg.supabase.co';
@@ -13,96 +7,115 @@ const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-async function quickFixPoints() {
-  console.log('🔧 开始修复积分系统...');
+async function fixUserPoints() {
+  console.log('🔧 开始修复用户积分系统...');
   
   try {
-    // 1. 检查现有用户
-    console.log('📋 检查现有用户...');
+    // 1. 获取所有用户
     const { data: users, error: usersError } = await supabase.auth.admin.listUsers();
     
     if (usersError) {
-      console.error('❌ 无法获取用户列表:', usersError);
+      console.error('❌ 获取用户列表失败:', usersError);
       return;
     }
     
-    console.log(`👥 找到 ${users.users.length} 个用户`);
+    console.log(`📊 找到 ${users.users.length} 个用户`);
     
-    // 2. 检查数据库表是否存在
-    console.log('🗄️ 检查数据库表...');
-    const { data: pointsData, error: pointsError } = await supabase
-      .from('user_points')
-      .select('*')
-      .limit(1);
-    
-    if (pointsError) {
-      console.error('❌ user_points表不存在或无法访问:', pointsError);
-      console.log('💡 请先在Supabase控制台执行 fix_points_system.sql 文件');
-      return;
-    }
-    
-    console.log('✅ 数据库表存在');
-    
-    // 3. 为每个用户检查并创建积分记录
+    // 2. 为每个用户检查和修复积分
     for (const user of users.users) {
-      console.log(`👤 处理用户: ${user.email || user.id}`);
+      const userId = user.id;
+      console.log(`👤 处理用户: ${userId}`);
       
-      // 检查是否已有积分记录
-      const { data: existingPoints, error: checkError } = await supabase
+      // 检查用户是否有积分记录
+      const { data: existingPoints, error: pointsError } = await supabase
         .from('user_points')
-        .select('*')
-        .eq('user_id', user.id)
+        .select('points')
+        .eq('user_id', userId)
         .single();
       
-      if (checkError && checkError.code !== 'PGRST116') {
-        console.error(`❌ 检查用户 ${user.email} 积分失败:`, checkError);
+      if (pointsError && !pointsError.message.includes('No rows found')) {
+        console.error(`❌ 检查用户 ${userId} 积分失败:`, pointsError);
         continue;
       }
       
-      if (existingPoints) {
-        console.log(`✅ 用户 ${user.email} 已有积分: ${existingPoints.points}`);
-        continue;
-      }
-      
-      // 创建积分记录
-      const { data: newPoints, error: createError } = await supabase
-        .from('user_points')
-        .insert({
-          user_id: user.id,
-          points: 100
-        })
-        .select();
-      
-      if (createError) {
-        console.error(`❌ 为用户 ${user.email} 创建积分失败:`, createError);
-        continue;
-      }
-      
-      console.log(`✅ 为用户 ${user.email} 创建积分记录: 100积分`);
-      
-      // 创建用户资料记录
-      const { data: profileData, error: profileError } = await supabase
-        .from('user_profiles')
-        .insert({
-          user_id: user.id,
-          username: user.user_metadata?.username || `user_${user.id.substring(0, 8)}`
-        })
-        .select();
-      
-      if (profileError) {
-        console.error(`❌ 为用户 ${user.email} 创建资料失败:`, profileError);
+      if (!existingPoints) {
+        // 用户没有积分记录，创建新记录
+        console.log(`💰 为用户 ${userId} 创建积分记录...`);
+        
+        const { error: insertError } = await supabase
+          .from('user_points')
+          .insert({
+            user_id: userId,
+            points: 100
+          });
+        
+        if (insertError) {
+          console.error(`❌ 创建积分记录失败:`, insertError);
+        } else {
+          console.log(`✅ 用户 ${userId} 积分记录创建成功`);
+        }
       } else {
-        console.log(`✅ 为用户 ${user.email} 创建资料记录`);
+        console.log(`ℹ️ 用户 ${userId} 已有积分记录: ${existingPoints.points} 积分`);
+      }
+      
+      // 检查用户资料
+      const { data: existingProfile, error: profileError } = await supabase
+        .from('user_profiles')
+        .select('username')
+        .eq('user_id', userId)
+        .single();
+      
+      if (profileError && !profileError.message.includes('No rows found')) {
+        console.error(`❌ 检查用户 ${userId} 资料失败:`, profileError);
+        continue;
+      }
+      
+      if (!existingProfile) {
+        // 用户没有资料记录，创建新记录
+        console.log(`👤 为用户 ${userId} 创建资料记录...`);
+        
+        const username = user.user_metadata?.username || user.email?.split('@')[0] || '用户';
+        
+        const { error: insertProfileError } = await supabase
+          .from('user_profiles')
+          .insert({
+            user_id: userId,
+            username: username
+          });
+        
+        if (insertProfileError) {
+          console.error(`❌ 创建用户资料失败:`, insertProfileError);
+        } else {
+          console.log(`✅ 用户 ${userId} 资料记录创建成功`);
+        }
+      } else {
+        console.log(`ℹ️ 用户 ${userId} 已有资料记录: ${existingProfile.username}`);
       }
     }
     
-    console.log('🎉 积分系统修复完成！');
-    console.log('💡 现在请刷新浏览器页面，重新登录查看积分');
+    console.log('🎉 用户积分系统修复完成！');
+    
+    // 3. 验证修复结果
+    const { data: allPoints, error: verifyError } = await supabase
+      .from('user_points')
+      .select('user_id, points');
+    
+    if (verifyError) {
+      console.error('❌ 验证失败:', verifyError);
+    } else {
+      console.log('📊 修复结果统计:');
+      console.log(`- 总用户数: ${users.users.length}`);
+      console.log(`- 积分记录数: ${allPoints.length}`);
+      console.log('- 积分分布:');
+      allPoints.forEach(point => {
+        console.log(`  - 用户 ${point.user_id}: ${point.points} 积分`);
+      });
+    }
     
   } catch (error) {
-    console.error('❌ 修复过程中出现错误:', error);
+    console.error('❌ 修复过程中发生错误:', error);
   }
 }
 
 // 运行修复
-quickFixPoints();
+fixUserPoints();

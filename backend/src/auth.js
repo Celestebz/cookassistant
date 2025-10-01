@@ -3,8 +3,8 @@ import { createClient } from '@supabase/supabase-js';
 // Supabase配置
 const supabaseUrl = process.env.SUPABASE_URL || 'https://bqbtkaljxsmdcpedrerg.supabase.co';
 const supabaseKey = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxYnRrYWxqeHNtZGNwZWRyZXJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NDg0NDUsImV4cCI6MjA3NDAyNDQ0NX0._XIcJcSg_00b_iOs90QM5GNaKAg5_LEHGDrexDTFcMQ';
-// 暂时使用匿名密钥作为服务密钥（开发环境）
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY || supabaseKey;
+// 使用服务角色密钥（优先），以确保服务端可绕过RLS执行写操作
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || supabaseKey;
 
 // 创建Supabase客户端
 const supabase = createClient(supabaseUrl, supabaseKey);
@@ -44,47 +44,94 @@ export async function getUserInfo(userId) {
   try {
     console.log('获取用户信息，用户ID:', userId);
     
-    // 获取用户积分
-    const { data: pointsData, error: pointsError } = await supabaseAdmin
+    // 获取用户积分（容忍重复，按最新记录获取）
+    const { data: pointsRows, error: pointsError } = await supabaseAdmin
       .from('user_points')
-      .select('points')
+      .select('points, updated_at')
       .eq('user_id', userId)
-      .single();
+      .order('updated_at', { ascending: false })
+      .limit(1);
+    const pointsData = Array.isArray(pointsRows) ? pointsRows[0] : null;
 
     console.log('积分查询结果:', { pointsData, pointsError });
 
-    // 获取用户资料
-    const { data: profileData, error: profileError } = await supabaseAdmin
+    // 获取用户资料（容忍重复，按最新记录获取）
+    const { data: profileRows, error: profileError } = await supabaseAdmin
       .from('user_profiles')
-      .select('username')
+      .select('username, updated_at')
       .eq('user_id', userId)
-      .single();
+      .order('updated_at', { ascending: false })
+      .limit(1);
+    const profileData = Array.isArray(profileRows) ? profileRows[0] : null;
 
     console.log('用户资料查询结果:', { profileData, profileError });
 
-    // 如果查询不到数据，尝试从Supabase auth获取用户信息
-    let finalUsername = profileData?.username || '用户';
+    // 确定用户名
+    let finalUsername = profileData?.username;
     
-    if (profileError && profileError.message.includes('Cannot coerce the result to a single JSON object')) {
-      console.log('用户资料不存在，尝试从auth获取用户信息');
+    // 如果没有用户资料或用户名为默认值，从auth获取
+    if (!finalUsername || finalUsername === '用户' || profileError) {
+      console.log('用户资料不完整，尝试从auth获取用户信息');
       try {
-        // 尝试从Supabase auth获取用户信息
         const { data: { user }, error: authError } = await supabaseAdmin.auth.admin.getUserById(userId);
-        if (user && user.user_metadata && user.user_metadata.username) {
-          finalUsername = user.user_metadata.username;
-          console.log('从auth获取到用户名:', finalUsername);
-        } else if (user && user.email) {
-          // 如果没有username，使用邮箱前缀作为用户名
-          finalUsername = user.email.split('@')[0];
-          console.log('使用邮箱前缀作为用户名:', finalUsername);
+        if (user) {
+          if (user.user_metadata && user.user_metadata.username) {
+            finalUsername = user.user_metadata.username;
+            console.log('从auth metadata获取到用户名:', finalUsername);
+          } else if (user.email) {
+            // 使用邮箱前缀作为用户名
+            finalUsername = user.email.split('@')[0];
+            console.log('使用邮箱前缀作为用户名:', finalUsername);
+          }
         }
       } catch (error) {
         console.error('从auth获取用户信息失败:', error);
       }
     }
 
+    // 确保有一个合理的默认用户名
+    if (!finalUsername || finalUsername === '用户') {
+      finalUsername = `用户_${userId.substring(0, 8)}`;
+    }
+
+    // 确定积分，如果没有积分记录则创建
+    let userPoints = pointsData?.points;
+    if (userPoints === undefined || userPoints === null) {
+      console.log('用户没有积分记录，创建默认积分记录');
+      // 使用upsert确保积分记录创建成功（兼容新旧数据库）
+      const { error: createPointsError } = await supabaseAdmin
+        .from('user_points')
+        .upsert({
+          user_id: userId,
+          points: 100,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_id'
+        });
+
+      if (createPointsError) {
+        console.error('创建积分记录失败:', createPointsError);
+        // 尝试直接插入作为备选方案
+        const { error: insertError } = await supabaseAdmin
+          .from('user_points')
+          .insert({
+            user_id: userId,
+            points: 100,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          });
+
+        if (insertError) {
+          console.error('插入积分记录也失败:', insertError);
+        }
+      }
+
+      userPoints = 100; // 默认积分
+    }
+
     const result = {
-      points: pointsData?.points || 100,
+      points: userPoints,
       username: finalUsername,
       error: null
     };
@@ -93,16 +140,21 @@ export async function getUserInfo(userId) {
     return result;
   } catch (error) {
     console.error('获取用户信息失败:', error);
-    return { points: 100, username: '用户', error: null };
+    return { points: 100, username: `用户_${userId?.substring(0, 8) || 'unknown'}`, error: null };
   }
 }
 
 // 更新用户积分
 export async function updateUserPoints(userId, pointsChange) {
   try {
-    // 先获取当前积分
-    const currentPointsResult = await checkUserPoints(userId, 0);
-    const currentPoints = currentPointsResult.currentPoints;
+    // 先获取当前积分（按最新记录）
+    const { data: pointsRows } = await supabaseAdmin
+      .from('user_points')
+      .select('points, updated_at')
+      .eq('user_id', userId)
+      .order('updated_at', { ascending: false })
+      .limit(1);
+    const currentPoints = Array.isArray(pointsRows) && pointsRows.length > 0 ? (pointsRows[0].points || 0) : 100;
     
     // 计算新积分
     const newPoints = currentPoints + pointsChange;
@@ -118,29 +170,39 @@ export async function updateUserPoints(userId, pointsChange) {
       };
     }
 
-    // 使用upsert操作，自动处理插入或更新
-    try {
-      const { data, error } = await supabaseAdmin
+    // 先尝试更新；如果没有更新任何行，则插入
+    console.log('尝试更新积分:', { userId, currentPoints, pointsChange, newPoints });
+    
+    const { data: updatedRows, error: updateError } = await supabaseAdmin
+      .from('user_points')
+      .update({ points: newPoints, updated_at: new Date().toISOString() })
+      .eq('user_id', userId)
+      .select('user_id');
+
+    if (updateError) {
+      console.error('积分更新失败:', updateError);
+      return { success: false, error: '积分更新失败: ' + updateError.message };
+    }
+
+    console.log('Update result:', { updatedRows, count: updatedRows?.length });
+
+    if (!updatedRows || updatedRows.length === 0) {
+      console.log('没有行被更新，尝试插入新记录');
+      const { error: insertError } = await supabaseAdmin
         .from('user_points')
-        .upsert({
+        .insert({
           user_id: userId,
           points: newPoints,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
-        }, {
-          onConflict: 'user_id'
-        })
-        .select();
-
-      if (error) {
-        console.error('积分更新失败:', error);
-        return { success: false, error };
+        });
+      if (insertError) {
+        console.error('积分插入失败:', insertError);
+        return { success: false, error: '积分插入失败: ' + insertError.message };
       }
-
-      console.log('积分更新成功，新积分:', newPoints);
-    } catch (error) {
-      console.error('积分更新异常:', error);
-      return { success: false, error };
+      console.log('积分记录插入成功');
+    } else {
+      console.log('积分更新成功');
     }
 
 
@@ -157,24 +219,20 @@ export async function checkUserPoints(userId, requiredPoints) {
   try {
     console.log('检查用户积分，用户ID:', userId, '需要积分:', requiredPoints);
     
-    // 使用admin客户端查询积分
-    const { data, error } = await supabaseAdmin
+    // 使用admin客户端查询积分（按最新记录获取，避免重复记录导致错误）
+    const { data: rows, error } = await supabaseAdmin
       .from('user_points')
-      .select('points')
+      .select('points, updated_at')
       .eq('user_id', userId)
-      .single();
+      .order('updated_at', { ascending: false })
+      .limit(1);
 
     if (error) {
       console.error('积分查询失败:', error);
-      // 如果查询不到数据，使用默认积分值
-      if (error.message.includes('Cannot coerce the result to a single JSON object')) {
-        console.log('积分记录不存在，使用默认100积分');
-        return { hasEnough: 100 >= requiredPoints, currentPoints: 100, error: null };
-      }
       return { hasEnough: false, currentPoints: 0, error };
     }
 
-    const currentPoints = data?.points || 100;
+    const currentPoints = Array.isArray(rows) && rows.length > 0 ? (rows[0].points || 0) : 100;
     console.log('当前积分:', currentPoints, '需要积分:', requiredPoints);
     
     return { 
