@@ -434,22 +434,69 @@ app.post('/auth/register', async (req, reply) => {
     // 创建积分记录（新用户奖励100积分）
     console.log('开始创建积分记录，用户ID:', userId);
 
-    // 使用upsert确保积分记录创建成功（兼容新旧数据库）
-    const { error: pointsError } = await supabaseAdmin
+    // 先尝试查询是否已存在积分记录
+    const { data: existingPoints } = await supabaseAdmin
       .from('user_points')
-      .upsert({
-        user_id: userId,
-        points: 100,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }, {
-        onConflict: 'user_id'
-      });
+      .select('points')
+      .eq('user_id', userId)
+      .single();
 
-    if (pointsError) {
-      console.error('创建积分记录失败:', pointsError);
-      // 尝试直接插入作为备选方案
-      const { error: insertError } = await supabaseAdmin
+    if (existingPoints) {
+      console.log('用户已有积分记录:', existingPoints.points);
+    } else {
+      // 使用upsert确保积分记录创建成功（兼容新旧数据库）
+      const { error: pointsError } = await supabaseAdmin
+        .from('user_points')
+        .upsert({
+          user_id: userId,
+          points: 100,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_id'
+        });
+
+      if (pointsError) {
+        console.error('创建积分记录失败:', pointsError);
+        // 尝试直接插入作为备选方案
+        const { error: insertError } = await supabaseAdmin
+          .from('user_points')
+          .insert({
+            user_id: userId,
+            points: 100,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          });
+
+        if (insertError) {
+          console.error('插入积分记录也失败:', insertError);
+          // 返回错误，不继续注册流程
+          return reply.code(500).send({ error: '积分系统故障，请稍后重试' });
+        }
+      }
+      console.log('✅ 积分记录创建成功');
+    }
+
+    // 验证积分记录是否创建成功
+    console.log('开始验证积分记录，用户ID:', userId);
+    const { data: verifyPoints, error: verifyError } = await supabaseAdmin
+      .from('user_points')
+      .select('points, created_at')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    const actualPoints = verifyPoints && verifyPoints.length > 0 ? verifyPoints[0].points : 100;
+    console.log('验证积分记录结果:', {
+      userId,
+      found: !!verifyPoints?.length,
+      points: actualPoints,
+      error: verifyError
+    });
+
+    if (!verifyPoints || verifyPoints.length === 0) {
+      console.error('❌ 积分记录验证失败，尝试重新创建');
+      const { error: recreateError } = await supabaseAdmin
         .from('user_points')
         .insert({
           user_id: userId,
@@ -458,31 +505,33 @@ app.post('/auth/register', async (req, reply) => {
           updated_at: new Date().toISOString()
         });
 
-      if (insertError) {
-        console.error('插入积分记录也失败:', insertError);
-        // 继续执行，不阻断注册流程
+      if (recreateError) {
+        console.error('重新创建积分记录失败:', recreateError);
       }
     }
 
-    // 验证积分记录是否创建成功
-    const { data: verifyPoints, error: verifyError } = await supabaseAdmin
-      .from('user_points')
-      .select('points')
-      .eq('user_id', userId)
-      .single();
-
-    const actualPoints = verifyPoints?.points || 100; // 默认100积分
-    console.log('验证积分记录:', { userId, actualPoints, verifyError });
-
     // 验证用户资料是否创建成功
-    const { data: verifyProfile } = await supabaseAdmin
+    console.log('开始验证用户资料，用户ID:', userId);
+    const { data: verifyProfile, error: profileVerifyError } = await supabaseAdmin
       .from('user_profiles')
-      .select('username')
+      .select('username, created_at')
       .eq('user_id', userId)
-      .single();
+      .order('created_at', { ascending: false })
+      .limit(1);
 
-    const displayUsername = verifyProfile?.username || finalUsername;
-    console.log('验证用户资料:', { userId, displayUsername });
+    const displayUsername = verifyProfile && verifyProfile.length > 0 ? verifyProfile[0].username : finalUsername;
+    console.log('验证用户资料结果:', {
+      userId,
+      found: !!verifyProfile?.length,
+      username: displayUsername,
+      error: profileVerifyError
+    });
+
+    console.log('✅ 注册流程完成，返回用户信息:', {
+      userId,
+      username: displayUsername,
+      points: actualPoints
+    });
 
     return reply.send({
       success: true,

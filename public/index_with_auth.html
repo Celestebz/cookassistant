@@ -592,17 +592,26 @@
                 if (response.ok) {
                     const data = await response.json()
                     console.log('用户信息API返回数据:', data)
-                    userPoints = Math.max(0, data.points || 0) // 确保积分不为负
-                    const username = data.username || '用户'
-                    
+
+                    // 确保积分是有效数字
+                    userPoints = Math.max(0, parseInt(data.points) || 0)
+                    const username = data.username && data.username !== '用户' ? data.username : '用户'
+
                     console.log('准备更新DOM - 用户名:', username, '积分:', userPoints)
-                    
-                    // 更新DOM
-                    document.getElementById('user-points').textContent = userPoints
-                    document.getElementById('user-username').textContent = username
-                    
-                    console.log('DOM已更新 - 用户名:', document.getElementById('user-username').textContent, '积分:', document.getElementById('user-points').textContent)
-                    
+
+                    // 更新DOM，确保元素存在
+                    const pointsElement = document.getElementById('user-points')
+                    const usernameElement = document.getElementById('user-username')
+
+                    if (pointsElement) {
+                        pointsElement.textContent = userPoints
+                    }
+                    if (usernameElement) {
+                        usernameElement.textContent = username
+                    }
+
+                    console.log('DOM已更新 - 用户名:', usernameElement?.textContent, '积分:', pointsElement?.textContent)
+
                     // 如果积分为0，显示提醒
                     if (userPoints === 0) {
                         showInsufficientPointsAlert()
@@ -610,17 +619,32 @@
                 } else {
                     const errorText = await response.text()
                     console.error('获取用户信息失败:', response.status, response.statusText, errorText)
-                    // 设置默认值
+
+                    // 设置默认值，确保元素存在
                     userPoints = 0
-                    document.getElementById('user-points').textContent = '0'
-                    document.getElementById('user-username').textContent = '用户'
+                    const pointsElement = document.getElementById('user-points')
+                    const usernameElement = document.getElementById('user-username')
+
+                    if (pointsElement) {
+                        pointsElement.textContent = '0'
+                    }
+                    if (usernameElement) {
+                        usernameElement.textContent = '用户'
+                    }
                 }
             } catch (error) {
                 console.error('加载用户数据失败:', error)
-                // 设置默认值
+                // 设置默认值，确保元素存在
                 userPoints = 0
-                document.getElementById('user-points').textContent = '0'
-                document.getElementById('user-username').textContent = '用户'
+                const pointsElement = document.getElementById('user-points')
+                const usernameElement = document.getElementById('user-username')
+
+                if (pointsElement) {
+                    pointsElement.textContent = '0'
+                }
+                if (usernameElement) {
+                    usernameElement.textContent = '用户'
+                }
             }
         }
 
