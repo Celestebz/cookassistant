@@ -6,30 +6,34 @@
       "maxDuration": 30
     }
   },
-  "rewrites": [
+  "routes": [
     {
-      "source": "/api/(.*)",
-      "destination": "/api/index"
+      "src": "/api/(.*)",
+      "dest": "/api/index"
     },
     {
-      "source": "/jobs/(.*)",
-      "destination": "/api/index"
+      "src": "/jobs/(.*)",
+      "dest": "/api/index"
     },
     {
-      "source": "/auth/(.*)",
-      "destination": "/api/index"
+      "src": "/auth/(.*)",
+      "dest": "/api/index"
     },
     {
-      "source": "/uploads/(.*)",
-      "destination": "/api/index"
+      "src": "/uploads/(.*)",
+      "dest": "/api/index"
     },
     {
-      "source": "/health",
-      "destination": "/api/index"
+      "src": "/health",
+      "dest": "/api/index"
     },
     {
-      "source": "/(.*)",
-      "destination": "/index_with_auth.html"
+      "src": "/",
+      "dest": "/index_with_auth.html"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index_with_auth.html"
     }
   ]
 }
