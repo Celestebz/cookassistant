@@ -93,8 +93,10 @@ export async function getUserInfo(userId) {
 
     console.log('用户资料查询结果:', { profileData, profileError });
 
-    // 确定用户名
+    // 确定用户名 - 优先使用profile中的用户名
     let finalUsername = profileData?.username;
+    
+    console.log('初始用户名:', finalUsername, 'profileError:', profileError);
     
     // 如果没有用户资料或用户名为默认值，从auth获取
     if (!finalUsername || finalUsername === '用户' || profileError) {
@@ -102,6 +104,11 @@ export async function getUserInfo(userId) {
       try {
         const { data: { user }, error: authError } = await supabaseAdmin.auth.admin.getUserById(userId);
         if (user) {
+          console.log('从auth获取到用户信息:', { 
+            email: user.email, 
+            metadata: user.user_metadata 
+          });
+          
           if (user.user_metadata && user.user_metadata.username) {
             finalUsername = user.user_metadata.username;
             console.log('从auth metadata获取到用户名:', finalUsername);
@@ -119,7 +126,10 @@ export async function getUserInfo(userId) {
     // 确保有一个合理的默认用户名
     if (!finalUsername || finalUsername === '用户') {
       finalUsername = `用户_${userId.substring(0, 8)}`;
+      console.log('使用默认用户名:', finalUsername);
     }
+    
+    console.log('最终确定的用户名:', finalUsername);
 
     // 确定积分，如果没有积分记录则创建
     let userPoints = pointsData?.points;

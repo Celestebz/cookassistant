@@ -187,19 +187,28 @@ async function processJob(jobId) {
     console.log('图片URL:', imageUrl);
     
     try {
-      // 从Supabase Storage下载图片
-      const response = await fetch(imageUrl);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch image: ${response.status}`);
+      let dataUrl;
+      
+      // 检查是否是base64格式（data:开头）
+      if (imageUrl.startsWith('data:')) {
+        console.log('检测到base64格式图片，直接使用');
+        dataUrl = imageUrl;
+      } else {
+        // 从Supabase Storage下载图片
+        console.log('从URL下载图片...');
+        const response = await fetch(imageUrl);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch image: ${response.status}`);
+        }
+        
+        const imageBuffer = await response.arrayBuffer();
+        const base64 = Buffer.from(imageBuffer).toString('base64');
+        const mimeType = imageUrl.includes('.png') ? 'image/png' : 'image/jpeg';
+        dataUrl = `data:${mimeType};base64,${base64}`;
+        console.log('✅ 图片已转换为base64，大小:', imageBuffer.byteLength, 'bytes');
       }
       
-      const imageBuffer = await response.arrayBuffer();
-      const base64 = Buffer.from(imageBuffer).toString('base64');
-      const mimeType = imageUrl.includes('.png') ? 'image/png' : 'image/jpeg';
-      const dataUrl = `data:${mimeType};base64,${base64}`;
-      console.log('✅ 图片已转换为base64，大小:', imageBuffer.byteLength, 'bytes');
       console.log('📤 调用Doubao API...');
-      
       stepsText = await generateRecipeSteps({
         imageUrl: dataUrl,
         prompt: buildStepsPrompt()
@@ -270,18 +279,68 @@ app.post('/jobs', { preHandler: authMiddleware }, async (req, reply) => {
     const ext = (file.filename?.split('.').pop() || 'jpg').toLowerCase();
     const fname = `in_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
     
+    console.log('开始上传文件:', fname, '大小:', file.file?.bytesRead || 'unknown');
+    
+    // 先尝试创建bucket（如果不存在）
+    try {
+      const { data: buckets } = await supabaseAdmin.storage.listBuckets();
+      const uploadsBucket = buckets.find(bucket => bucket.name === 'uploads');
+      
+      if (!uploadsBucket) {
+        console.log('创建uploads bucket...');
+        const { data: newBucket, error: bucketError } = await supabaseAdmin.storage.createBucket('uploads', {
+          public: true,
+          allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
+          fileSizeLimit: 10485760 // 10MB
+        });
+        
+        if (bucketError) {
+          console.error('创建bucket失败:', bucketError);
+        } else {
+          console.log('bucket创建成功:', newBucket);
+        }
+      }
+    } catch (bucketErr) {
+      console.log('bucket检查/创建过程出错，继续尝试上传:', bucketErr.message);
+    }
+    
     // 上传到Supabase Storage
     const fileBuffer = await file.toBuffer();
+    console.log('文件buffer大小:', fileBuffer.length);
+    
     const { data, error } = await supabaseAdmin.storage
       .from('uploads')
       .upload(fname, fileBuffer, {
-        contentType: file.mimetype,
+        contentType: file.mimetype || 'image/jpeg',
         upsert: false
       });
 
     if (error) {
       console.error('Supabase Storage上传失败:', error);
-      return reply.code(500).send({ error: '图片上传失败，请重试' });
+      // 尝试使用base64直接处理，不依赖Storage
+      console.log('尝试使用base64直接处理...');
+      const base64 = fileBuffer.toString('base64');
+      const mimeType = file.mimetype || 'image/jpeg';
+      const dataUrl = `data:${mimeType};base64,${base64}`;
+      
+      const jobId = 'job_' + nanoid(8);
+      const job = { 
+        id: jobId, 
+        status: 'queued', 
+        inputImageUrl: dataUrl, // 直接使用base64
+        userId: req.user.id,
+        userPointsBeforeJob: pointsCheck.currentPoints,
+        createdAt: now() 
+      };
+      jobs.set(jobId, job);
+      processJob(jobId).catch(() => {});
+      return reply.code(201).send({ 
+        id: jobId, 
+        status: job.status, 
+        createdAt: job.createdAt,
+        userPoints: pointsCheck.currentPoints,
+        message: '任务已创建，将消耗10积分进行AI分析'
+      });
     }
 
     // 获取公开URL
