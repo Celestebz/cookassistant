@@ -890,6 +890,59 @@ app.post('/test-create-points', async (req, reply) => {
   }
 });
 
+// 测试图片上传功能
+app.post('/test-upload', async (req, reply) => {
+  try {
+    console.log('🧪 开始测试图片上传功能...');
+    
+    const file = await req.file();
+    if (!file) {
+      return reply.code(400).send({ error: 'No file uploaded' });
+    }
+    
+    console.log('📁 文件信息:', {
+      filename: file.filename,
+      mimetype: file.mimetype,
+      encoding: file.encoding,
+      fieldname: file.fieldname
+    });
+    
+    // 获取文件buffer
+    const fileBuffer = await file.toBuffer();
+    console.log('📊 文件大小:', fileBuffer.length, 'bytes');
+    
+    // 转换为base64
+    const base64 = fileBuffer.toString('base64');
+    const mimeType = file.mimetype || 'image/jpeg';
+    const dataUrl = `data:${mimeType};base64,${base64}`;
+    
+    console.log('✅ 文件处理成功');
+    console.log('Base64长度:', base64.length);
+    console.log('Data URL长度:', dataUrl.length);
+    
+    return reply.send({
+      status: 'ok',
+      fileInfo: {
+        filename: file.filename,
+        mimetype: file.mimetype,
+        size: fileBuffer.length,
+        base64Length: base64.length,
+        dataUrlLength: dataUrl.length
+      },
+      message: '图片上传测试成功',
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('图片上传测试失败:', error);
+    return reply.code(500).send({ 
+      status: 'error', 
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // 添加根路径健康检查（Railway兼容性）
 app.get('/', async (req, reply) => {
   return reply.send({ 

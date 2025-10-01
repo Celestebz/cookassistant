@@ -6,16 +6,18 @@ const DOUBAO_ENDPOINT = 'https://ark.cn-beijing.volces.com/api/v3/chat/completio
 export async function generateRecipeSteps({ imageUrl, prompt, model = 'ep-20250921085349-k25sf', temperature = 0.3 }) {
   const apiKey = process.env.ARK_API_KEY || '3dafef81-fdc1-4148-bb39-87c396f94c2a';
   
-  console.log('Doubao API调用参数:', { imageUrl, model, apiKey: apiKey ? '已设置' : '未设置' });
-  console.log('API密钥值:', apiKey);
-  console.log('即将调用Doubao API...');
+  console.log('🔧 Doubao API配置检查:', { 
+    model, 
+    apiKey: apiKey ? '已设置' : '未设置',
+    imageUrlLength: imageUrl?.length || 0,
+    promptLength: prompt?.length || 0
+  });
   
   // 检查API密钥是否有效
   if (!apiKey || apiKey === 'your_doubao_api_key_here' || apiKey === 'test_key_for_demo') {
-    console.log('使用模拟数据，API密钥未正确设置');
+    console.log('⚠️  API密钥检查失败，使用模拟数据');
     console.log('当前API密钥:', apiKey);
     console.log('环境变量ARK_API_KEY:', process.env.ARK_API_KEY);
-    console.log('⚠️  警告：API密钥检查失败，将返回模拟数据');
     
     // 基于图片URL进行智能推断，返回更有用的模拟数据
     const imageFileName = imageUrl.split('/').pop();
