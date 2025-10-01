@@ -23,7 +23,7 @@ import { createClient } from '@supabase/supabase-js';
 // Supabase配置
 const supabaseUrl = process.env.SUPABASE_URL || 'https://bqbtkaljxsmdcpedrerg.supabase.co';
 const supabaseKey = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxYnRrYWxqeHNtZGNwZWRyZXJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NDg0NDUsImV4cCI6MjA3NDAyNDQ0NX0._XIcJcSg_00b_iOs90QM5GNaKAg5_LEHGDrexDTFcMQ';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY || supabaseKey;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || supabaseKey;
 
 // 创建Supabase客户端
 const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
@@ -41,9 +41,32 @@ await app.register(multipart, {
     files: 1
   }
 });
-// serve uploads statically
+// serve static files
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const uploadsDir = path.join(__dirname, '../../uploads');
+const publicDir = path.join(__dirname, '../public');
+const uploadsDir = path.join(__dirname, '../uploads');
+
+// serve public files
+app.get('/public/*', async (req, reply) => {
+  const rel = req.params['*'];
+  const p = path.join(publicDir, rel);
+  if (fs.existsSync(p) && fs.statSync(p).isFile()) {
+    const ext = path.extname(p);
+    const contentType = {
+      '.html': 'text/html',
+      '.js': 'application/javascript',
+      '.css': 'text/css',
+      '.png': 'image/png',
+      '.jpg': 'image/jpeg',
+      '.gif': 'image/gif'
+    }[ext] || 'text/plain';
+    reply.type(contentType);
+    return reply.send(fs.readFileSync(p));
+  }
+  return reply.code(404).send({ error: 'File not found' });
+});
+
+// serve uploads statically
 fs.mkdirSync(uploadsDir, { recursive: true });
 app.get('/uploads/*', async (req, reply) => {
   const rel = req.params['*'];
@@ -216,11 +239,15 @@ async function processJob(jobId) {
         const consumeResult = await consumePoints(job.userId, 10);
         if (consumeResult.success) {
           console.log('✅ 积分扣除成功，剩余积分:', consumeResult.newPoints);
+          job.pointsDeducted = 10;
+          job.remainingPoints = consumeResult.newPoints;
         } else {
           console.error('❌ 积分扣除失败:', consumeResult.error);
+          job.pointsDeductionError = consumeResult.error;
         }
       } catch (error) {
         console.error('❌ 积分扣除异常:', error);
+        job.pointsDeductionError = error.message;
       }
     }
   } catch (err) {
@@ -231,6 +258,16 @@ async function processJob(jobId) {
 }
 
 app.post('/jobs', { preHandler: authMiddleware }, async (req, reply) => {
+  // 检查用户积分是否足够
+  const pointsCheck = await checkUserPoints(req.user.id, 10);
+  if (!pointsCheck.hasEnough) {
+    return reply.code(400).send({ 
+      error: '积分不足，需要10积分进行AI分析', 
+      currentPoints: pointsCheck.currentPoints,
+      requiredPoints: 10
+    });
+  }
+
   const file = await req.file();
   if (!file) return reply.code(400).send({ error: 'image file is required' });
   const ext = (file.filename?.split('.').pop() || 'jpg').toLowerCase();
@@ -245,11 +282,18 @@ app.post('/jobs', { preHandler: authMiddleware }, async (req, reply) => {
     status: 'queued', 
     inputImageUrl, 
     userId: req.user.id, // 记录用户ID用于积分扣除
+    userPointsBeforeJob: pointsCheck.currentPoints, // 记录任务开始前的积分
     createdAt: now() 
   };
   jobs.set(jobId, job);
   processJob(jobId).catch(() => {});
-  return reply.code(201).send({ id: jobId, status: job.status, createdAt: job.createdAt });
+  return reply.code(201).send({ 
+    id: jobId, 
+    status: job.status, 
+    createdAt: job.createdAt,
+    userPoints: pointsCheck.currentPoints,
+    message: '任务已创建，将消耗10积分进行AI分析'
+  });
 });
 
 app.get('/jobs/:id', async (req, reply) => {
@@ -318,104 +362,71 @@ app.post('/auth/register', async (req, reply) => {
     const userId = authData.user.id;
     console.log('注册创建的用户ID:', userId);
 
-    // 创建用户资料，如果用户名重复则生成新用户名
+    // 创建用户资料，确保用户名正确设置
     let finalUsername = username;
-    let profileError = null;
+    console.log('开始创建用户资料，用户名:', finalUsername);
     
-    // 尝试创建用户资料
-    const { error: initialProfileError } = await supabaseAdmin
+    // 先尝试插入用户资料
+    const { error: profileError } = await supabaseAdmin
       .from('user_profiles')
       .insert({
         user_id: userId,
-        username: username
+        username: finalUsername,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       });
-    
-    if (initialProfileError && initialProfileError.message.includes('duplicate key')) {
-      // 用户名重复，生成新用户名
-      finalUsername = `${username}_${Date.now()}`;
-      const { error: retryProfileError } = await supabaseAdmin
-        .from('user_profiles')
-        .insert({
-          user_id: userId,
-          username: finalUsername
-        });
-      profileError = retryProfileError;
-    } else {
-      profileError = initialProfileError;
-    }
 
     if (profileError) {
       console.error('创建用户资料失败:', profileError);
-      // 尝试使用upsert方式创建用户资料
-      const { error: upsertProfileError } = await supabaseAdmin
-        .from('user_profiles')
-        .upsert({
-          user_id: userId,
-          username: username
-        }, {
-          onConflict: 'user_id'
-        });
-      
-      if (upsertProfileError) {
-        console.error('upsert用户资料也失败:', upsertProfileError);
-        return reply.code(500).send({ error: '创建用户资料失败: ' + profileError.message });
-      } else {
-        console.log('使用upsert成功创建用户资料');
+      // 如果用户名冲突，生成新用户名
+      if (profileError.code === '23505' || profileError.message.includes('duplicate key') || profileError.message.includes('unique')) {
+        finalUsername = `${username}_${Date.now()}`;
+        const { error: retryError } = await supabaseAdmin
+          .from('user_profiles')
+          .insert({
+            user_id: userId,
+            username: finalUsername,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          });
+        
+        if (retryError) {
+          console.error('重试创建用户资料也失败:', retryError);
+          // 继续执行，不阻断注册流程
+        }
       }
     }
 
     // 创建积分记录（新用户奖励100积分）
     console.log('开始创建积分记录，用户ID:', userId);
-    
-    // 先尝试插入，如果失败则更新
-    const { data: existingPoints, error: checkError } = await supabaseAdmin
+
+    // 使用upsert确保积分记录创建成功（兼容新旧数据库）
+    const { error: pointsError } = await supabaseAdmin
       .from('user_points')
-      .select('points')
-      .eq('user_id', userId)
-      .single();
+      .upsert({
+        user_id: userId,
+        points: 100,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'user_id'
+      });
 
-    if (checkError && !checkError.message.includes('No rows found')) {
-      console.error('检查积分记录失败:', checkError);
-    }
-
-    let pointsError = null;
-    if (existingPoints) {
-      // 用户已有积分记录，更新积分
-      const { error: updateError } = await supabaseAdmin
-        .from('user_points')
-        .update({ points: 100 })
-        .eq('user_id', userId);
-      pointsError = updateError;
-      console.log('更新积分记录结果:', { updateError });
-    } else {
-      // 用户没有积分记录，创建新记录
+    if (pointsError) {
+      console.error('创建积分记录失败:', pointsError);
+      // 尝试直接插入作为备选方案
       const { error: insertError } = await supabaseAdmin
         .from('user_points')
         .insert({
           user_id: userId,
-          points: 100
+          points: 100,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         });
-      pointsError = insertError;
-      console.log('插入积分记录结果:', { insertError });
-    }
-    
-    if (pointsError) {
-      console.error('创建积分记录失败:', pointsError);
-      // 尝试使用upsert方式创建积分记录
-      const { error: upsertError } = await supabaseAdmin
-        .from('user_points')
-        .upsert({
-          user_id: userId,
-          points: 100
-        }, {
-          onConflict: 'user_id'
-        });
-      
-      if (upsertError) {
-        console.error('upsert积分记录也失败:', upsertError);
-        return reply.code(500).send({ error: '创建积分记录失败: ' + pointsError.message });
-      } else {
-        console.log('使用upsert成功创建积分记录');
+
+      if (insertError) {
+        console.error('插入积分记录也失败:', insertError);
+        // 继续执行，不阻断注册流程
       }
     }
 
@@ -426,13 +437,23 @@ app.post('/auth/register', async (req, reply) => {
       .eq('user_id', userId)
       .single();
 
-    const actualPoints = verifyPoints?.points || 0;
+    const actualPoints = verifyPoints?.points || 100; // 默认100积分
     console.log('验证积分记录:', { userId, actualPoints, verifyError });
+
+    // 验证用户资料是否创建成功
+    const { data: verifyProfile } = await supabaseAdmin
+      .from('user_profiles')
+      .select('username')
+      .eq('user_id', userId)
+      .single();
+
+    const displayUsername = verifyProfile?.username || finalUsername;
+    console.log('验证用户资料:', { userId, displayUsername });
 
     return reply.send({
       success: true,
       userId: userId,
-      username: finalUsername,
+      username: displayUsername,
       points: actualPoints,
       message: `注册成功！您获得了${actualPoints}积分奖励！`
     });
@@ -466,27 +487,71 @@ app.post('/auth/login', async (req, reply) => {
     const userId = authData.user.id;
     console.log('登录验证的用户ID:', userId);
 
-    // 获取用户信息
-    const userInfo = await getUserInfo(userId);
-    if (userInfo.error) {
-      return reply.code(500).send({ error: '获取用户信息失败' });
+    // 获取用户资料
+    const { data: profileData } = await supabaseAdmin
+      .from('user_profiles')
+      .select('username')
+      .eq('user_id', userId)
+      .single();
+
+    // 获取用户积分
+    const { data: pointsData } = await supabaseAdmin
+      .from('user_points')
+      .select('points')
+      .eq('user_id', userId)
+      .single();
+
+    // 确定显示的用户名
+    let displayUsername = profileData?.username || username;
+    if (displayUsername === '用户' || !displayUsername) {
+      displayUsername = username;
     }
 
-    // 如果用户名为默认值，尝试从邮箱获取用户名
-    let displayUsername = userInfo.username;
-    if (displayUsername === '用户') {
-      // 从邮箱中提取用户名
-      const emailPrefix = email.split('@')[0];
-      displayUsername = emailPrefix;
-      console.log('使用邮箱前缀作为用户名:', displayUsername);
+    // 确定用户积分，如果没有积分记录则创建
+    let userPoints = pointsData?.points;
+    if (userPoints === undefined || userPoints === null) {
+      console.log('用户没有积分记录，创建默认积分记录');
+      // 使用upsert确保积分记录创建成功（兼容新旧数据库）
+      const { error: createPointsError } = await supabaseAdmin
+        .from('user_points')
+        .upsert({
+          user_id: userId,
+          points: 100,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_id'
+        });
+
+      if (createPointsError) {
+        console.error('创建积分记录失败:', createPointsError);
+        // 尝试直接插入作为备选方案
+        const { error: insertError } = await supabaseAdmin
+          .from('user_points')
+          .insert({
+            user_id: userId,
+            points: 100,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          });
+
+        if (insertError) {
+          console.error('插入积分记录也失败:', insertError);
+        }
+      }
+
+      userPoints = 100; // 默认积分
     }
+
+    console.log('登录成功:', { userId, displayUsername, userPoints });
 
     return reply.send({
       success: true,
       userId: userId,
       username: displayUsername,
-      points: userInfo.points,
-      message: '登录成功！'
+      points: userPoints,
+      token: authData.session.access_token,
+      message: `登录成功！当前积分：${userPoints}`
     });
 
   } catch (error) {
@@ -514,27 +579,13 @@ app.get('/auth/user', { preHandler: authMiddleware }, async (req, reply) => {
       return reply.code(500).send({ error: '获取用户信息失败' });
     }
     
-    // 如果用户名为默认值，尝试从邮箱获取用户名
-    let displayUsername = userInfo.username;
-    if (displayUsername === '用户') {
-      try {
-        // 从Supabase auth获取用户信息
-        const { data: { user }, error: authError } = await supabaseAdmin.auth.admin.getUserById(req.user.id);
-        if (user && user.email) {
-          // 从邮箱中提取用户名
-          const emailPrefix = user.email.split('@')[0];
-          displayUsername = emailPrefix;
-          console.log('从邮箱获取用户名:', displayUsername);
-        }
-      } catch (error) {
-        console.error('从auth获取用户信息失败:', error);
-      }
-    }
+    console.log('返回用户信息:', { id: req.user.id, username: userInfo.username, points: userInfo.points });
     
     return reply.send({
       id: req.user.id,
-      username: displayUsername,
-      points: userInfo.points
+      username: userInfo.username,
+      points: userInfo.points,
+      message: `当前积分：${userInfo.points}`
     });
   } catch (error) {
     app.log.error({ err: error }, '获取用户信息失败');

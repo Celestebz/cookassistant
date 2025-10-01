@@ -281,3 +281,44 @@ Update result: {
 {"level":30,"time":1759319567968,"pid":16818,"hostname":"celestes-MacBook-Pro.local","reqId":"req-i","res":{"statusCode":200},"responseTime":5260.765833000187,"msg":"request completed"}
 {"level":30,"time":1759319567975,"pid":16818,"hostname":"celestes-MacBook-Pro.local","reqId":"req-j","req":{"method":"GET","url":"/uploads/in_1759319543173_l9nwkd1ba2i.png","hostname":"localhost:8787","remoteAddress":"127.0.0.1","remotePort":57506},"msg":"incoming request"}
 {"level":30,"time":1759319567977,"pid":16818,"hostname":"celestes-MacBook-Pro.local","reqId":"req-j","res":{"statusCode":200},"responseTime":1.8829999999143183,"msg":"request completed"}
+{"level":30,"time":1759320879634,"pid":16818,"hostname":"celestes-MacBook-Pro.local","reqId":"req-k","req":{"method":"GET","url":"/public/index_with_auth.html?","hostname":"localhost:8787","remoteAddress":"127.0.0.1","remotePort":60969},"msg":"incoming request"}
+{"level":30,"time":1759320879636,"pid":16818,"hostname":"celestes-MacBook-Pro.local","reqId":"req-k","res":{"statusCode":200},"responseTime":1.9082080000080168,"msg":"request completed"}
+验证令牌: eyJhbGciOiJIUzI1NiIs...
+{"level":30,"time":1759320879799,"pid":16818,"hostname":"celestes-MacBook-Pro.local","reqId":"req-l","req":{"method":"GET","url":"/auth/user","hostname":"localhost:8787","remoteAddress":"127.0.0.1","remotePort":60969},"msg":"incoming request"}
+认证结果: { user: '774acb73-26f6-46f0-8c33-f31f1e702c4f', error: null }
+获取用户信息，用户ID: 774acb73-26f6-46f0-8c33-f31f1e702c4f
+{"level":30,"time":1759320882693,"pid":16818,"hostname":"celestes-MacBook-Pro.local","reqId":"req-m","req":{"method":"GET","url":"/public/index_with_auth.html?","hostname":"localhost:8787","remoteAddress":"127.0.0.1","remotePort":60971},"msg":"incoming request"}
+{"level":30,"time":1759320882695,"pid":16818,"hostname":"celestes-MacBook-Pro.local","reqId":"req-m","res":{"statusCode":200},"responseTime":1.5532090002670884,"msg":"request completed"}
+{"level":30,"time":1759320882781,"pid":16818,"hostname":"celestes-MacBook-Pro.local","reqId":"req-n","req":{"method":"GET","url":"/auth/user","hostname":"localhost:8787","remoteAddress":"127.0.0.1","remotePort":60971},"msg":"incoming request"}
+验证令牌: eyJhbGciOiJIUzI1NiIs...
+积分查询结果: {
+  pointsData: { points: 90, updated_at: '2025-10-01T11:52:43.192+00:00' },
+  pointsError: null
+}
+用户资料查询结果: {
+  profileData: { username: '555', updated_at: '2025-09-30T23:36:06.167174+00:00' },
+  profileError: null
+}
+最终用户信息: { points: 90, username: '555', error: null }
+返回用户信息: {
+  id: '774acb73-26f6-46f0-8c33-f31f1e702c4f',
+  username: '555',
+  points: 90
+}
+认证结果: { user: '774acb73-26f6-46f0-8c33-f31f1e702c4f', error: null }
+获取用户信息，用户ID: 774acb73-26f6-46f0-8c33-f31f1e702c4f
+积分查询结果: {
+  pointsData: { points: 90, updated_at: '2025-10-01T11:52:43.192+00:00' },
+  pointsError: null
+}
+用户资料查询结果: {
+  profileData: { username: '555', updated_at: '2025-09-30T23:36:06.167174+00:00' },
+  profileError: null
+}
+最终用户信息: { points: 90, username: '555', error: null }
+返回用户信息: {
+  id: '774acb73-26f6-46f0-8c33-f31f1e702c4f',
+  username: '555',
+  points: 90
+}
+{"level":30,"time":1759320884635,"pid":16818,"hostname":"celestes-MacBook-Pro.local","reqId":"req-n","res":{"statusCode":200},"responseTime":1853.8850000002421,"msg":"request completed"}
