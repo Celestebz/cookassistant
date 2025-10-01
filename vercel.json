@@ -6,34 +6,50 @@
       "maxDuration": 30
     }
   },
-  "routes": [
+  "rewrites": [
     {
-      "src": "/api/(.*)",
-      "dest": "/api/index"
+      "source": "/api/(.*)",
+      "destination": "/api/index"
     },
     {
-      "src": "/jobs/(.*)",
-      "dest": "/api/index"
+      "source": "/jobs",
+      "destination": "/api/index"
     },
     {
-      "src": "/auth/(.*)",
-      "dest": "/api/index"
+      "source": "/jobs/(.*)",
+      "destination": "/api/index"
     },
     {
-      "src": "/uploads/(.*)",
-      "dest": "/api/index"
+      "source": "/auth/(.*)",
+      "destination": "/api/index"
     },
     {
-      "src": "/health",
-      "dest": "/api/index"
+      "source": "/uploads/(.*)",
+      "destination": "/api/index"
     },
     {
-      "src": "/",
-      "dest": "/index_with_auth.html"
+      "source": "/health",
+      "destination": "/api/index"
     },
     {
-      "src": "/(.*)",
-      "dest": "/index_with_auth.html"
+      "source": "/test-supabase",
+      "destination": "/api/index"
+    },
+    {
+      "source": "/test-create-points",
+      "destination": "/api/index"
+    },
+    {
+      "source": "/test-upload",
+      "destination": "/api/index"
+    },
+    {
+      "source": "/",
+      "destination": "/index_with_auth.html"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index_with_auth.html"
     }
   ]
 }
