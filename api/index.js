@@ -1003,9 +1003,6 @@ async function startServer() {
   }
 }
 
-// 启动应用
-startServer();
-
 // 导出Fastify应用给Vercel使用
 export default app;
 
