@@ -46,6 +46,12 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(__dirname, '../../public');
 const uploadsDir = path.join(__dirname, '../../uploads');
 
+console.log('Public directory path:', publicDir);
+console.log('Public directory exists:', fs.existsSync(publicDir));
+if (fs.existsSync(publicDir)) {
+  console.log('Public directory contents:', fs.readdirSync(publicDir));
+}
+
 // serve public files
 app.get('/public/*', async (req, reply) => {
   const rel = req.params['*'];
@@ -695,12 +701,17 @@ app.post('/auth/check-points', { preHandler: authMiddleware }, async (req, reply
 app.get('/health', async (req, reply) => {
   return reply.send({ 
     status: 'ok', 
+    service: 'cook-assistant-api',
     timestamp: new Date().toISOString() 
   });
 });
 
-// 添加根路径健康检查（Railway兼容性）
+// 添加根路径，返回前端页面
 app.get('/', async (req, reply) => {
+  const indexPath = path.join(publicDir, 'index_with_auth.html');
+  if (fs.existsSync(indexPath)) {
+    return reply.type('text/html').send(fs.readFileSync(indexPath, 'utf8'));
+  }
   return reply.send({ 
     status: 'ok', 
     service: 'cook-assistant-api',
