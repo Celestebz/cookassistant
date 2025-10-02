@@ -6,22 +6,14 @@
       "maxDuration": 10
     }
   },
-  "routes": [
+  "rewrites": [
     {
-      "src": "/health",
-      "dest": "/api/simple.cjs"
+      "source": "/health",
+      "destination": "/api/simple.cjs"
     },
     {
-      "src": "/api/health",
-      "dest": "/api/simple.cjs"
-    },
-    {
-      "src": "/",
-      "dest": "/index_with_auth.html"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index_with_auth.html"
+      "source": "/api/health", 
+      "destination": "/api/simple.cjs"
     }
   ]
 }
