@@ -1,19 +1,4 @@
 {
   "version": 2,
-  "outputDirectory": "public",
-  "functions": {
-    "api/health.js": {
-      "maxDuration": 10
-    }
-  },
-  "rewrites": [
-    {
-      "source": "/health",
-      "destination": "/api/health.js"
-    },
-    {
-      "source": "/api/health", 
-      "destination": "/api/health.js"
-    }
-  ]
+  "outputDirectory": "public"
 }
