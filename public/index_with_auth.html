@@ -17,6 +17,23 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            /* 移动端优化 */
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+        
+        /* 允许文本选择 */
+        input, textarea, .step-text, .ingredient-item {
+            -webkit-user-select: text;
+            -moz-user-select: text;
+            -ms-user-select: text;
+            user-select: text;
         }
 
         .header {
@@ -61,6 +78,10 @@
             cursor: pointer;
             font-weight: 500;
             transition: all 0.3s ease;
+            /* 移动端触摸优化 */
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+            min-height: 44px; /* iOS推荐的最小触摸目标 */
         }
 
         .btn-primary {
@@ -98,6 +119,14 @@
             cursor: pointer;
             transition: all 0.3s ease;
             margin-bottom: 2rem;
+            /* 移动端触摸优化 */
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+            min-height: 120px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
         }
 
         .upload-zone:hover {
@@ -108,6 +137,16 @@
         .upload-zone.dragover {
             border-color: #667eea;
             background: #f0f4ff;
+        }
+        
+        /* 移动端触摸反馈 */
+        .upload-zone:active {
+            transform: scale(0.98);
+            background: #f0f4ff;
+        }
+        
+        .btn:active {
+            transform: scale(0.95);
         }
 
         .upload-icon {
@@ -210,18 +249,284 @@
             margin-bottom: 0.5rem;
         }
 
+        /* 移动端优化 */
         @media (max-width: 768px) {
+            .header {
+                padding: 0.75rem 1rem;
+                flex-wrap: wrap;
+                gap: 0.5rem;
+            }
+            
+            .logo {
+                font-size: 1.2rem;
+                flex: 1;
+                min-width: 0;
+            }
+            
+            .user-info {
+                flex-direction: column;
+                align-items: flex-end;
+                gap: 0.5rem;
+            }
+            
+            .points-display {
+                padding: 0.4rem 0.8rem;
+                font-size: 0.9rem;
+            }
+            
+            .auth-buttons {
+                flex-direction: column;
+                gap: 0.3rem;
+            }
+            
+            .btn {
+                padding: 0.4rem 0.8rem;
+                font-size: 0.9rem;
+            }
+            
+            .container {
+                padding: 1rem;
+            }
+            
+            .main-content {
+                padding: 1.5rem;
+                border-radius: 15px;
+            }
+            
+            .upload-zone {
+                padding: 2rem 1rem;
+                margin-bottom: 1.5rem;
+            }
+            
+            .upload-icon {
+                font-size: 2.5rem;
+            }
+            
+            .upload-text {
+                font-size: 1.1rem;
+            }
+            
+            .upload-hint {
+                font-size: 0.85rem;
+            }
+            
             .recipe-image-container {
                 max-width: 100%;
             }
             
             .recipe-image {
-                height: 250px;
+                height: 200px;
             }
             
             .image-loading,
             .image-error {
-                height: 250px;
+                height: 200px;
+            }
+            
+            .recipe-title {
+                font-size: 1.5rem;
+                margin-bottom: 1rem;
+            }
+            
+            .recipe-content {
+                grid-template-columns: 1fr;
+                gap: 1.5rem;
+                display: flex;
+                flex-direction: column;
+            }
+            
+            .ingredients-section, .steps-section {
+                padding: 1.25rem;
+                margin-bottom: 0.5rem;
+            }
+            
+            .ingredients-section {
+                order: 1;
+                background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+                border-left: 4px solid #667eea;
+            }
+            
+            .steps-section {
+                order: 2;
+                background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+                border-left: 4px solid #f39c12;
+            }
+            
+            .section-title {
+                font-size: 1.1rem;
+                margin-bottom: 0.75rem;
+            }
+            
+            .ingredient-item {
+                padding: 0.5rem 0;
+                font-size: 0.9rem;
+                line-height: 1.4;
+            }
+            
+            .step-item {
+                padding: 0.75rem 0;
+                gap: 0.75rem;
+            }
+            
+            .step-number {
+                width: 1.75rem;
+                height: 1.75rem;
+                font-size: 0.9rem;
+            }
+            
+            .step-text {
+                font-size: 0.9rem;
+                line-height: 1.4;
+            }
+            
+            .points-cost {
+                padding: 0.75rem;
+                font-size: 0.9rem;
+                margin: 1rem 0;
+            }
+            
+            .modal-content {
+                width: 95%;
+                padding: 1.5rem;
+                margin: 1rem;
+            }
+            
+            .modal-content input {
+                padding: 0.8rem;
+                font-size: 1rem;
+            }
+            
+            .modal-content button {
+                padding: 0.8rem;
+                font-size: 1rem;
+            }
+        }
+        
+        /* 超小屏幕优化 */
+        @media (max-width: 480px) {
+            .header {
+                padding: 0.5rem 0.75rem;
+            }
+            
+            .logo {
+                font-size: 1rem;
+            }
+            
+            .container {
+                padding: 0.75rem;
+            }
+            
+            .main-content {
+                padding: 1rem;
+            }
+            
+            .upload-zone {
+                padding: 1.5rem 0.75rem;
+                min-height: 100px;
+            }
+            
+            .upload-icon {
+                font-size: 2rem;
+            }
+            
+            .upload-text {
+                font-size: 1rem;
+            }
+            
+            .recipe-image {
+                height: 180px;
+            }
+            
+            .image-loading,
+            .image-error {
+                height: 180px;
+            }
+            
+            .recipe-title {
+                font-size: 1.3rem;
+            }
+            
+            .ingredients-section, .steps-section {
+                padding: 1rem;
+                margin-bottom: 0.75rem;
+            }
+            
+            .ingredients-section {
+                background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+                border-left: 3px solid #667eea;
+            }
+            
+            .steps-section {
+                background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+                border-left: 3px solid #f39c12;
+            }
+            
+            .section-title {
+                font-size: 1rem;
+            }
+            
+            .ingredient-item {
+                font-size: 0.85rem;
+            }
+            
+            .step-text {
+                font-size: 0.85rem;
+            }
+            
+            .modal-content {
+                padding: 1rem;
+                width: 98%;
+                margin: 0.5rem;
+            }
+        }
+        
+        /* 横屏模式优化 */
+        @media (max-width: 768px) and (orientation: landscape) {
+            .header {
+                padding: 0.5rem 1rem;
+            }
+            
+            .container {
+                padding: 0.5rem;
+            }
+            
+            .main-content {
+                padding: 1rem;
+            }
+            
+            .upload-zone {
+                padding: 1rem;
+                min-height: 80px;
+            }
+            
+            .recipe-image {
+                height: 150px;
+            }
+            
+            .image-loading,
+            .image-error {
+                height: 150px;
+            }
+            
+            .recipe-content {
+                gap: 1rem;
+            }
+            
+            .ingredients-section, .steps-section {
+                padding: 0.75rem;
+                margin-bottom: 0.5rem;
+            }
+            
+            .steps-section::before {
+                display: none; /* 横屏时隐藏滚动提示 */
+            }
+        }
+        
+        /* 高分辨率屏幕优化 */
+        @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+            .upload-icon,
+            .loading-icon {
+                -webkit-font-smoothing: antialiased;
             }
         }
 
@@ -260,6 +565,22 @@
             display: flex;
             align-items: center;
             gap: 0.5rem;
+        }
+        
+        /* 移动端滚动提示 */
+        @media (max-width: 768px) {
+            .steps-section::before {
+                content: "👇 下滑查看更多步骤";
+                display: block;
+                text-align: center;
+                font-size: 0.8rem;
+                color: #666;
+                margin-bottom: 0.5rem;
+                padding: 0.5rem;
+                background: rgba(255, 255, 255, 0.7);
+                border-radius: 8px;
+                border: 1px dashed #ccc;
+            }
         }
 
         .ingredient-list {
@@ -1273,6 +1594,10 @@
             border-radius: 15px;
             width: 90%;
             max-width: 400px;
+            /* 移动端优化 */
+            max-height: 90vh;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
         }
 
         .modal-content h2 {
@@ -1286,6 +1611,11 @@
             margin-bottom: 1rem;
             border: 1px solid #ddd;
             border-radius: 6px;
+            /* 移动端优化 */
+            font-size: 16px; /* 防止iOS缩放 */
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
         }
 
         .modal-content button {
