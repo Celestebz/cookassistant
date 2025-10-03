@@ -329,10 +329,10 @@
             }
             
             .recipe-content {
-                grid-template-columns: 1fr;
+                grid-template-columns: 1fr !important;
                 gap: 1.5rem;
-                display: flex;
-                flex-direction: column;
+                display: flex !important;
+                flex-direction: column !important;
             }
             
             .ingredients-section, .steps-section {
@@ -496,6 +496,8 @@
             
             .recipe-content {
                 gap: 1rem;
+                display: flex !important;
+                flex-direction: column !important;
             }
             
             .ingredients-section, .steps-section {
@@ -528,10 +530,13 @@
             font-size: 1.5rem;
         }
 
-        .recipe-content {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1.5rem;
+        /* 桌面端布局 */
+        @media (min-width: 769px) {
+            .recipe-content {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 1.5rem;
+            }
         }
 
         .ingredients-section, .steps-section {
